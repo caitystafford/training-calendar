@@ -402,91 +402,181 @@ h1.headline {
 .tab:hover { color: var(--ink); }
 .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--navy); }
 
-/* --- Calendar grid -------------------------------------------------------- */
-.calendar {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(262px, 1fr));
-  gap: 16px;
-  align-items: start;
-}
-
-.month {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 128px;
-  box-shadow: var(--shadow);
-  animation: fadeUp 0.45s cubic-bezier(.2, .7, .2, 1) both;
-}
-.month.is-past { opacity: 0.62; }
-.month.is-current { border-color: var(--navy); box-shadow: 0 0 0 2px var(--navy), var(--shadow); }
-
-.month-head {
+/* --- Month accordion ------------------------------------------------------ */
+/* The whole year fits on one screen as twelve quiet rows. Open a month to see
+   what is in it. Colour only appears once you are inside. */
+.year-bar {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 10px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--line-soft);
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
 }
-.month-name { font-size: 15px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.03em; }
-.month-year { font-size: 11px; font-weight: 700; color: var(--ink-40); letter-spacing: 0.14em; }
-.month-count { font-size: 11px; font-weight: 800; color: var(--ink-40); font-variant-numeric: tabular-nums; }
-.now-tag {
-  font-size: 9px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
-  background: var(--navy); color: #fff; border-radius: 999px; padding: 4px 9px;
+.year-total {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-55);
+}
+.year-actions { display: flex; gap: 16px; }
+
+.months {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
 }
 
-/* --- Training card -------------------------------------------------------- */
-.item {
-  background: var(--mist);
-  border-radius: 12px;
-  border: 1px solid var(--line-soft);
-  border-left: 4px solid var(--line);
-  padding: 12px 14px;
+.m-row + .m-row { border-top: 1px solid var(--line-soft); }
+.m-row.is-open + .m-row { border-top-color: var(--line); }
+
+.m-head {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 16px minmax(200px, 270px) 1fr 34px;
+  grid-template-areas: "chev name sum count";
+  align-items: center;
+  gap: 14px;
+  background: none;
+  border: none;
+  padding: 15px 22px;
   cursor: pointer;
   text-align: left;
-  width: 100%;
   color: var(--ink);
-  transition: transform 0.12s ease, background 0.12s ease;
-  display: block;
+  transition: background 0.12s ease;
 }
-.item:hover { transform: translateY(-1px); background: #ece8f2; }
+.m-head:hover { background: var(--mist); }
+.m-head:disabled { cursor: default; }
+.m-head:disabled:hover { background: none; }
 
-.item-title { font-size: 14px; font-weight: 700; line-height: 1.3; margin-bottom: 8px; }
-.item-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.m-chev {
+  width: 0; height: 0;
+  border-left: 5px solid var(--ink-40);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 0.16s ease;
+  margin-left: 3px;
+}
+.m-row.is-open .m-chev { transform: rotate(90deg); }
+.m-row.is-empty .m-chev { opacity: 0; }
 
-.tag {
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.09em;
+.m-chev { grid-area: chev; }
+.m-name { grid-area: name; }
+.m-sum  { grid-area: sum; }
+.m-count { grid-area: count; }
+
+.m-name {
+  font-size: 15px;
+  font-weight: 900;
   text-transform: uppercase;
-  border-radius: 999px;
-  padding: 3px 8px;
-  white-space: nowrap;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
 }
-/* Department carries the colour — it is how the policy calendar is read.
-   Everything else stays neutral so the colour means one thing only. */
-.tag-dept { }
-.tag-type { background: var(--paper); border: 1px solid var(--ink-40); color: var(--ink-70); }
-.tag-area { background: var(--paper); border: 1px solid var(--line); color: var(--ink-55); }
-.tag-status { background: none; border: 1px dashed var(--ink-40); color: var(--ink-40); }
-.tag-recurring { background: rgba(14, 147, 180, 0.12); color: #0a6d86; }
+.m-name .m-yr {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--ink-40);
+}
+
+.m-sum {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-55);
+  line-height: 1.4;
+}
+.m-row.is-empty .m-sum { color: var(--ink-40); }
+
+.m-count {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink-40);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.m-row.is-current .m-head { background: var(--mist); }
+.m-row.is-current .m-name { color: var(--ink); }
+.m-row.is-past:not(.is-open) .m-name,
+.m-row.is-past:not(.is-open) .m-sum { opacity: 0.6; }
+
+.m-body {
+  padding: 4px 22px 16px;
+  animation: openDown 0.2s ease both;
+}
+/* Collapsed rows keep their contents in the DOM but out of sight, so Print
+   and browser find-in-page still see the whole year. */
+.m-row:not(.is-open) .m-body { display: none; }
+
+@media (max-width: 820px) {
+  .m-head {
+    grid-template-columns: 16px 1fr auto;
+    grid-template-areas:
+      "chev name  count"
+      ".    sum   sum";
+    row-gap: 5px;
+    padding: 14px 18px;
+  }
+}
+
+.now-tag {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
+  background: var(--navy); color: #fff; border-radius: 999px; padding: 4px 9px; white-space: nowrap;
+}
+.blackout-tag {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
+  background: var(--mist); border: 1px solid var(--line); color: var(--ink-40);
+  border-radius: 999px; padding: 3px 9px; white-space: nowrap;
+}
+.blackout-warn {
+  font-size: 11.5px; font-weight: 700; color: #7a1526;
+  background: #fdf0f2; border-radius: 8px; padding: 8px 12px; margin: 8px 0 4px;
+}
+
+/* --- Training row --------------------------------------------------------- */
+.dot { width: 9px; height: 9px; border-radius: 999px; flex-shrink: 0; display: inline-block; }
+
+.t-row {
+  display: grid;
+  grid-template-columns: 9px minmax(160px, 1.3fr) 1.25fr 155px;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+.t-row:hover { background: var(--mist); }
+
+.t-title { font-size: 14.5px; font-weight: 700; line-height: 1.35; }
+.t-meta { font-size: 12.5px; font-weight: 500; color: var(--ink-55); line-height: 1.4; }
+.t-when {
+  font-size: 11.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-40); white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.t-res { text-align: right; }
+
+@media (max-width: 820px) {
+  .t-row { grid-template-columns: 9px 1fr; row-gap: 5px; padding: 12px; }
+  .t-meta, .t-res, .t-when { grid-column: 2; text-align: left; }
+}
 
 .res-link {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.09em;
   text-transform: uppercase;
   border-radius: 999px;
-  padding: 3px 9px;
+  padding: 4px 10px;
   border: 1px solid var(--line);
   background: var(--paper);
   color: #0a6d86;
@@ -495,92 +585,46 @@ h1.headline {
 }
 .res-link:hover { border-color: #0e93b4; background: rgba(14, 147, 180, 0.08); }
 .res-link svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-/* No link added yet — visible enough to prompt someone to add one, quiet
-   enough not to shout from every card. */
+/* No link added yet — a prompt to add one, not a shout. */
 .res-link.is-empty {
-  color: rgba(21, 7, 33, 0.32);
+  color: rgba(21, 7, 33, 0.3);
   border-color: transparent;
   background: none;
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: 0; padding-right: 0;
   font-weight: 700;
-  cursor: default;
-  pointer-events: none;
 }
 
-.month-empty { font-size: 12px; font-weight: 600; color: var(--ink-40); letter-spacing: 0.04em; padding: 12px 0; }
-
-/* --- Blackout months ------------------------------------------------------ */
-/* July and December — months we do not schedule training into. Drawn with a
-   faint diagonal hatch so they read as "closed" at a glance. */
-.month.is-blackout {
-  background:
-    repeating-linear-gradient(135deg, transparent 0 7px, rgba(21, 7, 33, 0.035) 7px 14px),
-    var(--paper);
-  border-style: dashed;
-}
-.blackout-tag {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  background: var(--mist);
-  border: 1px solid var(--line);
-  color: var(--ink-55);
-  border-radius: 999px;
-  padding: 4px 9px;
-  white-space: nowrap;
-}
-.blackout-warn {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: #7a1526;
-  background: #fdf0f2;
-  border-radius: 8px;
-  padding: 8px 10px;
-}
-
-/* --- Parked --------------------------------------------------------------- */
-.parked-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(262px, 1fr));
-  gap: 12px;
-  align-items: start;
-}
-.parked-grid .item { background: var(--paper); border: 1px solid var(--line); border-left-width: 4px; }
-.parked-grid .item:hover { background: var(--mist); }
-
-/* --- List view ------------------------------------------------------------ */
-.list-month { margin-bottom: 30px; animation: fadeUp 0.45s cubic-bezier(.2, .7, .2, 1) both; }
-.list-month-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.list-month-head .bar { width: 26px; height: 5px; border-radius: 3px; flex-shrink: 0; }
-.list-month-head h3 { font-size: 19px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; margin: 0; }
-.list-month-head .n { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; color: var(--ink-40); }
-
-.row {
-  display: grid;
-  grid-template-columns: 210px 1fr auto;
-  gap: 18px;
-  align-items: center;
+/* --- Flat list view ------------------------------------------------------- */
+.l-list {
   background: var(--paper);
   border: 1px solid var(--line);
-  border-left: 4px solid var(--line);
-  border-radius: 14px;
-  padding: 16px 20px;
-  margin-bottom: 8px;
-  cursor: pointer;
-  text-align: left;
-  width: 100%;
-  color: var(--ink);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
 }
-.row:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
-.row .r-title { font-size: 16px; font-weight: 700; line-height: 1.3; }
-.row .r-sum { font-size: 13px; font-weight: 500; color: var(--ink-55); margin-top: 4px; line-height: 1.5; }
-.row .r-tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.l-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  align-items: start;
+  padding: 16px 22px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+.l-row + .l-row { border-top: 1px solid var(--line-soft); }
+.l-row:hover { background: var(--mist); }
+.l-main { display: grid; grid-template-columns: 9px 1fr; gap: 12px; align-items: start; }
+.l-main .dot { margin-top: 6px; }
+.l-main .t-meta { margin-top: 3px; }
+.l-sum { font-size: 13px; font-weight: 500; color: var(--ink-55); line-height: 1.55; margin-top: 6px; max-width: 78ch; }
+.l-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 
-@media (max-width: 780px) { .row { grid-template-columns: 1fr; gap: 10px; } }
+@media (max-width: 700px) {
+  .l-row { grid-template-columns: 1fr; }
+  .l-side { flex-direction: row; align-items: center; }
+}
+
+@keyframes openDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
 /* --- Detail panel --------------------------------------------------------- */
 .overlay {
@@ -773,12 +817,6 @@ h1.headline {
 .empty p { font-size: 15px; font-weight: 500; color: var(--ink-55); margin: 0 0 20px; }
 
 /* --- Legend / footer ------------------------------------------------------ */
-.legend { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; padding: 22px 0 0; margin-top: 30px; border-top: 1px solid var(--line); }
-.legend-label { font-size: 11px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-40); }
-.legend-item { display: flex; align-items: center; gap: 8px; }
-.legend-item .swatch { width: 12px; height: 12px; border-radius: 3px; }
-.legend-item .t { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-55); }
-
 .footer {
   padding: 22px 24px;
   display: flex; justify-content: space-between; align-items: center;
@@ -794,15 +832,19 @@ h1.headline {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .month, .list-month, .panel, .overlay { animation: none; }
-  .btn:hover, .item:hover, .row:hover, .area-card:hover { transform: none; }
+  .m-body, .panel, .overlay { animation: none; }
+  .btn:hover, .area-card:hover { transform: none; }
+  .m-chev { transition: none; }
 }
 
 /* --- Print ---------------------------------------------------------------- */
 @media print {
   body { background: #fff; }
-  .filters, .tabs, .masthead-actions, .footer, .spectrum, .legend, .period, .areas { display: none !important; }
-  .month, .row, .pc-timeline { border: 1px solid #ccc; box-shadow: none; break-inside: avoid; }
-  .calendar { grid-template-columns: repeat(3, 1fr); }
-  .month.is-past { opacity: 1; }
+  .filters, .tabs, .masthead-actions, .footer, .spectrum, .period, .areas, .year-actions { display: none !important; }
+  .months, .l-list { border: 1px solid #ccc; box-shadow: none; }
+  .m-row, .l-row, .t-row { break-inside: avoid; }
+  .m-row.is-past .m-name, .m-row.is-past .m-sum { opacity: 1; }
+  /* Print everything, whether or not it happens to be expanded on screen. */
+  .m-body { display: block !important; }
+  .m-chev { display: none; }
 }

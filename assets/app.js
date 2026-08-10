@@ -15,6 +15,7 @@
     types: new Set(),           // empty = all
     departments: new Set(),     // empty = all
     thisMonth: false,           // restrict to the current calendar month
+    expanded: new Set(),        // which month rows are open
     search: "",
     periodMode: "fy",           // fy | cy
     periodYear: FY.startYear,   // year the visible window starts in
@@ -154,30 +155,24 @@
   }
 
   /* --- Shared fragments --------------------------------------------------- */
-  function deptTag(item) {
+
+  /* Colour appears exactly once per row — a single department dot. Everything
+     else is plain text, so the eye is not fighting eight pills per item. */
+  function deptDot(item) {
     const d = deptOf(item);
-    return `<span class="tag tag-dept" style="background:${d.colour};color:${textOn(d.colour)}">${esc(d.short)}</span>`;
+    return `<span class="dot" style="background:${d.colour}" title="${esc(d.label)}"></span>`;
   }
 
-  function typeTag(item) {
-    const t = TYPES[item.type] || { short: item.type };
-    return `<span class="tag tag-type">${esc(t.short)}</span>`;
-  }
-
-  /* Business area tags are redundant once you have picked a single area. */
-  function areaTags(item) {
-    if (state.area) return "";
-    return (item.areas || [])
-      .map((a) => `<span class="tag tag-area">${esc((BUSINESS_AREAS[a] || { short: a }).short)}</span>`)
-      .join("");
-  }
-
-  function parkedTag(item) {
-    return isParked(item) ? `<span class="tag tag-status">No date yet</span>` : "";
-  }
-
-  function recurringTag(item) {
-    return itemMonths(item).length > 1 ? `<span class="tag tag-recurring">Recurring</span>` : "";
+  /* "Policy resigns · Risk & Compliance · Stores" — one quiet line of meta. */
+  function metaLine(item) {
+    const bits = [(TYPES[item.type] || {}).label, deptOf(item).label];
+    if (!state.area) {
+      const areas = (item.areas || []).map((a) => (BUSINESS_AREAS[a] || { short: a }).short);
+      if (areas.length === Object.keys(BUSINESS_AREAS).length) bits.push("All areas");
+      else if (areas.length) bits.push(areas.join(", "));
+    }
+    if (itemMonths(item).length > 1) bits.push("Recurring");
+    return bits.filter(Boolean).join(" · ");
   }
 
   /* Resources link — shown on everything except online modules, where the
@@ -186,7 +181,7 @@
     if (item.type === "online") {
       return item.link
         ? `<a class="res-link" href="${esc(item.link)}" target="_blank" rel="noopener">${icon("external")}Module</a>`
-        : "";
+        : `<span class="res-link is-empty">&mdash;</span>`;
     }
     if (item.resources) {
       return `<a class="res-link" href="${esc(item.resources)}" target="_blank" rel="noopener">${icon("external")}Resources</a>`;
@@ -194,123 +189,150 @@
     return `<span class="res-link is-empty">Resources to come</span>`;
   }
 
-  function card(item) {
+  /* One line of training. Same row shape everywhere in the app. */
+  function trainingRow(item, opts) {
+    const showDate = opts && opts.showDate;
+    const when = itemMonths(item).map((m) => {
+      const l = monthLabel(m);
+      return l.name.slice(0, 3) + " " + String(l.year).slice(2);
+    }).join(", ");
+
     return `
-      <div class="item" data-id="${esc(item.id)}" role="button" tabindex="0"
-           style="border-left-color:${deptOf(item).colour}">
-        <div class="item-title">${esc(item.title)}</div>
-        <div class="item-meta">${deptTag(item)}${typeTag(item)}${areaTags(item)}${recurringTag(item)}${parkedTag(item)}${resourceLink(item)}</div>
+      <div class="t-row" data-id="${esc(item.id)}" role="button" tabindex="0">
+        ${deptDot(item)}
+        <span class="t-title">${esc(item.title)}</span>
+        ${showDate ? `<span class="t-when">${esc(when || "No date")}</span>` : ""}
+        <span class="t-meta">${esc(metaLine(item))}</span>
+        <span class="t-res">${resourceLink(item)}</span>
       </div>`;
   }
 
+  /* Plain-language count, e.g. "3 policy resigns · 1 workshop". */
+  const TYPE_NOUN = {
+    workshop: ["workshop", "workshops"],
+    online: ["online module", "online modules"],
+    policy: ["policy resign", "policy resigns"],
+    webinar: ["webinar", "webinars"],
+    activity: ["campaign", "campaigns"],
+  };
+
+  function typeSummary(items) {
+    const counts = {};
+    items.forEach((i) => { counts[i.type] = (counts[i.type] || 0) + 1; });
+    return Object.keys(TYPES).filter((t) => counts[t]).map((t) => {
+      const noun = TYPE_NOUN[t] || [t, t + "s"];
+      return counts[t] + " " + (counts[t] === 1 ? noun[0] : noun[1]);
+    }).join(" · ");
+  }
+
   /* --- Views -------------------------------------------------------------- */
+  /* The main view is twelve collapsed rows. You see the whole year without
+     scrolling, then open only the month you care about. */
   function renderCalendar(items) {
     const months = periodMonths();
     const now = currentMonthKey();
 
-    const cells = months.map((key, idx) => {
+    const rows = months.map((key) => {
       const label = monthLabel(key);
       const inMonth = items.filter((i) => itemMonths(i).includes(key));
       const blackout = isBlackout(key);
       const isCurrent = key === now;
+      const open = state.expanded.has(key);
+      const canOpen = inMonth.length > 0;
 
-      let body;
-      if (inMonth.length) {
-        body = (blackout
-          ? `<div class="blackout-warn">Scheduled during a blackout month</div>`
-          : "") + inMonth.map(card).join("");
-      } else if (blackout) {
-        body = `<div class="month-empty">No training scheduled</div>`;
-      } else {
-        body = `<div class="month-empty">${anyFilterActive() ? "Nothing matching" : "Nothing scheduled"}</div>`;
-      }
+      let summary;
+      if (blackout && !inMonth.length) summary = "No training scheduled";
+      else if (!inMonth.length) summary = anyFilterActive() ? "Nothing matching" : "Nothing scheduled";
+      else summary = esc(typeSummary(inMonth));
+
+      // Always in the DOM, hidden with CSS, so Print can show every month
+      // regardless of what happens to be expanded on screen.
+      const body = inMonth.length ? `
+        <div class="m-body">
+          ${blackout ? '<div class="blackout-warn">Scheduled during a blackout month</div>' : ""}
+          ${inMonth.map((i) => trainingRow(i)).join("")}
+        </div>` : "";
 
       return `
-        <section class="month${key < now ? " is-past" : ""}${isCurrent ? " is-current" : ""}${blackout ? " is-blackout" : ""}"
-                 style="animation-delay:${idx * 20}ms">
-          <div class="month-head">
-            <div>
-              <div class="month-name">${esc(label.name)}</div>
-              <div class="month-year">${label.year}</div>
-            </div>
-            ${isCurrent ? '<span class="now-tag">This month</span>'
-              : blackout ? '<span class="blackout-tag">Blackout</span>'
-              : `<span class="month-count">${inMonth.length}</span>`}
-          </div>
+        <div class="m-row${open ? " is-open" : ""}${isCurrent ? " is-current" : ""}${!canOpen ? " is-empty" : ""}${key < now ? " is-past" : ""}">
+          <button class="m-head" data-month="${esc(key)}" aria-expanded="${open}" ${canOpen ? "" : "disabled"}>
+            <span class="m-chev" aria-hidden="true"></span>
+            <span class="m-name">${esc(label.name)}<span class="m-yr">${label.year}</span>${
+              isCurrent ? '<span class="now-tag">This month</span>' : ""}${
+              blackout ? '<span class="blackout-tag">Blackout</span>' : ""}</span>
+            <span class="m-sum">${summary}</span>
+            <span class="m-count">${inMonth.length || ""}</span>
+          </button>
           ${body}
-        </section>`;
-    }).join("");
-
-    return `<div class="calendar">${cells}</div>` + parked(items) + legend();
-  }
-
-  function renderList(items) {
-    const now = currentMonthKey();
-    const blocks = periodMonths().map((key) => {
-      const inMonth = items.filter((i) => itemMonths(i).includes(key));
-      const blackout = isBlackout(key);
-      if (!inMonth.length && !blackout) return "";
-      const label = monthLabel(key);
-
-      if (!inMonth.length) {
-        return `
-          <div class="list-month">
-            <div class="list-month-head">
-              <span class="bar" style="background:var(--line)"></span>
-              <h3>${esc(label.name)} ${label.year}</h3>
-              <span class="blackout-tag">Blackout · no training scheduled</span>
-            </div>
-          </div>`;
-      }
-
-      const rows = inMonth.map((i) => `
-        <div class="row" data-id="${esc(i.id)}" role="button" tabindex="0"
-             style="border-left-color:${deptOf(i).colour}">
-          <div class="r-tags">${deptTag(i)}${typeTag(i)}${areaTags(i)}${recurringTag(i)}${parkedTag(i)}</div>
-          <div>
-            <div class="r-title">${esc(i.title)}</div>
-            ${i.summary ? `<div class="r-sum">${esc(i.summary)}</div>` : ""}
-          </div>
-          <div class="r-tags">${resourceLink(i)}</div>
-        </div>`).join("");
-
-      return `
-        <div class="list-month">
-          <div class="list-month-head">
-            <span class="bar" style="background:${deptOf(inMonth[0]).colour}"></span>
-            <h3>${esc(label.name)} ${label.year}</h3>
-            <span class="n">${inMonth.length} item${inMonth.length === 1 ? "" : "s"}</span>
-            ${key === now ? '<span class="now-tag">This month</span>' : ""}
-            ${blackout ? '<span class="blackout-tag">Blackout</span>' : ""}
-          </div>
-          ${rows}
         </div>`;
     }).join("");
 
-    if (!blocks) return emptyState();
-    return blocks + parked(items) + legend();
+    return `
+      <div class="year-bar">
+        <div class="year-total">${items.filter((i) => !isParked(i)).length} scheduled across ${esc(periodLabel())}</div>
+        <div class="year-actions">
+          <button class="link-btn" data-action="expand-all">Expand all</button>
+          <button class="link-btn" data-action="collapse-all">Collapse all</button>
+        </div>
+      </div>
+      <div class="months">${rows}</div>` + parked(items);
+  }
+
+  /* Flat chronological list of everything, summaries included. */
+  function renderList(items) {
+    const window = periodMonths();
+    const inYear = items.filter((i) => itemMonths(i).some((m) => window.includes(m)));
+    if (!inYear.length) return emptyState();
+
+    const sorted = inYear.slice().sort((a, b) => {
+      const am = itemMonths(a).filter((m) => window.includes(m))[0];
+      const bm = itemMonths(b).filter((m) => window.includes(m))[0];
+      return am === bm ? a.title.localeCompare(b.title) : am.localeCompare(bm);
+    });
+
+    const rows = sorted.map((i) => `
+      <div class="l-row" data-id="${esc(i.id)}" role="button" tabindex="0">
+        <div class="l-main">
+          ${deptDot(i)}
+          <div>
+            <div class="t-title">${esc(i.title)}</div>
+            <div class="t-meta">${esc(metaLine(i))}</div>
+            ${i.summary ? `<div class="l-sum">${esc(i.summary)}</div>` : ""}
+          </div>
+        </div>
+        <div class="l-side">
+          <span class="t-when">${esc(itemMonths(i).filter((m) => window.includes(m)).map((m) => {
+            const l = monthLabel(m);
+            return l.name.slice(0, 3) + " " + String(l.year).slice(2);
+          }).join(", "))}</span>
+          ${resourceLink(i)}
+        </div>
+      </div>`).join("");
+
+    return `
+      <div class="year-bar">
+        <div class="year-total">${sorted.length} scheduled across ${esc(periodLabel())}, in date order</div>
+      </div>
+      <div class="l-list">${rows}</div>` + parked(items);
   }
 
   /* Items with no date agreed yet, listed so they are not forgotten. */
   function parked(items) {
     const list = items.filter(isParked);
     if (!list.length) return "";
+    const open = state.expanded.has("parked");
     return `
-      <div class="section-head" style="margin-top:34px">
-        <span class="bar" style="background:var(--ink-40)"></span>
-        <h3>Parked</h3>
-        <span class="n">${list.length} with no date yet</span>
-      </div>
-      <div class="parked-grid">${list.map(card).join("")}</div>`;
-  }
-
-  function legend() {
-    const items = Object.keys(DEPARTMENTS).map((k) => `
-      <div class="legend-item">
-        <span class="swatch" style="background:${DEPARTMENTS[k].colour}"></span>
-        <span class="t">${esc(DEPARTMENTS[k].label)}</span>
-      </div>`).join("");
-    return `<div class="legend"><div class="legend-label">Departments</div>${items}</div>`;
+      <div class="months" style="margin-top:14px">
+        <div class="m-row${open ? " is-open" : ""}">
+          <button class="m-head" data-month="parked" aria-expanded="${open}">
+            <span class="m-chev" aria-hidden="true"></span>
+            <span class="m-name">Parked</span>
+            <span class="m-sum">No date agreed yet</span>
+            <span class="m-count">${list.length}</span>
+          </button>
+          <div class="m-body">${list.map((i) => trainingRow(i)).join("")}</div>
+        </div>
+      </div>`;
   }
 
   function emptyState() {
@@ -796,6 +818,15 @@
     const submit = e.target.closest("[data-submit]");
     if (submit) { submitForm(submit.dataset.submit); return; }
 
+    const mHead = e.target.closest(".m-head");
+    if (mHead) {
+      const key = mHead.dataset.month;
+      if (state.expanded.has(key)) state.expanded.delete(key);
+      else state.expanded.add(key);
+      render();
+      return;
+    }
+
     const tab = e.target.closest(".tab");
     if (tab) { state.view = tab.dataset.view; render(); return; }
 
@@ -823,6 +854,13 @@
       if (a === "reset") {
         state.area = null; state.types.clear(); state.departments.clear();
         state.thisMonth = false; state.search = "";
+        render();
+      } else if (a === "expand-all") {
+        periodMonths().forEach((m) => state.expanded.add(m));
+        state.expanded.add("parked");
+        render();
+      } else if (a === "collapse-all") {
+        state.expanded.clear();
         render();
       } else if (a === "this-month") {
         state.thisMonth = !state.thisMonth;
@@ -866,5 +904,7 @@
 
   /* --- Boot --------------------------------------------------------------- */
   snapPeriodToNow();
+  // Open the current month so the page is useful the moment it loads.
+  if (periodMonths().includes(currentMonthKey())) state.expanded.add(currentMonthKey());
   render();
 })();

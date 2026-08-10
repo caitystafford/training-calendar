@@ -6,14 +6,18 @@ Built as a plain static site. No build step, no server, no backend, no dependenc
 
 ## What's on the page
 
+**Calendar** is twelve collapsed month rows — the whole year fits on one screen without scrolling. Each row says what is in that month in plain English ("3 policy resigns · 1 workshop"); click to expand it. The current month opens on load, and *Expand all* / *Collapse all* are there when you want everything at once.
+
+**List** is the same training as one flat run in date order, with the summaries showing, for when you want to read rather than navigate.
+
 - **Business area cards** — All / Stores / CCPF / Head Office. One click, whole calendar reframes.
 - **Financial year ⇄ calendar year toggle**, with a year dropdown and arrows. The counter tells you how many items fall outside the year you are looking at.
-- **Department colours** taken straight from the Policy Resign Calendar spreadsheet. The colour on each card is its department, and nothing else uses colour, so it means one thing only.
-- **Blackout months** — July and December are drawn hatched and greyed. If something is scheduled into one anyway, the card carries a warning.
-- **Parked** — anything with no date agreed is listed under the calendar so it is not forgotten.
+- **One dot of colour per row**, which is the department. Nothing else in the calendar is coloured, so the colour means exactly one thing — and the department is named in words alongside it, so the dot never has to be decoded.
+- **Blackout months** — July and December read as greyed rows with a Blackout badge and no expand arrow. If something is scheduled into one anyway, the month expands and carries a warning.
+- **Parked** — anything with no date agreed is its own row at the bottom so it is not forgotten.
 - **No status field.** Everything on the calendar is treated the same. Where a date or format is genuinely unsettled, that is said in the item's own summary rather than as a badge.
 - **This month** filter, which also jumps the calendar to the right year if you are looking at a different one.
-- **Resources link** on every card except online modules, where the module itself is the resource.
+- **Resources link** on every row except online modules, where the module itself is the resource.
 
 ---
 
@@ -62,7 +66,7 @@ Save the file, refresh the browser. That is the whole update process.
 
 ### Departments and colours
 
-Colours come from the colour coding in the 2026 Policy Resign Calendar. Change one in the `DEPARTMENTS` block and it changes everywhere.
+Each row carries one small dot in its department colour, with the department named next to it. Colours come from the colour coding in the policy resign calendar. Change one in the `DEPARTMENTS` block and it changes everywhere.
 
 | Department | Key | Colour |
 |---|---|---|
@@ -83,13 +87,13 @@ Peach, lilac, yellow and red are the spreadsheet's own colours. Lime for Finance
 const BLACKOUT_MONTHS = [7, 12];   // July and December
 ```
 
-Change that line to move them. Blackout months are drawn hatched, badged, and default to *No training scheduled*. If an item is scheduled into one, it still shows, with a warning on the month and a note in the detail panel.
+Change that line to move them. Blackout months are greyed, badged, not expandable, and read *No training scheduled*. If an item is scheduled into one, the month becomes expandable and carries a warning, and the item's detail panel says so too.
 
 ### Resources links
 
 Every item that is not an online module has a `resources` field. Paste a SharePoint folder link, a Teams file link, or anything else — it becomes a **Resources** button on the card and in the detail panel.
 
-Leave it as `""` and the card shows a quiet *Resources to come*, so you can see at a glance which sessions still need their materials attached. **None are set yet** — every card currently reads *Resources to come*.
+Leave it as `""` and the row shows a quiet *Resources to come*, so you can see at a glance which sessions still need their materials attached. **None are set yet** — every row currently reads *Resources to come*.
 
 Online modules use `link` instead, pointing at the CCLearn course.
 
@@ -270,6 +274,6 @@ assets/app.js              Filtering and rendering. No content in here.
 ## Notes
 
 - **Fonts.** Archivo loads from Google Fonts. If the network blocks that, the page falls back to Helvetica/Arial and still looks fine — but if you are hosting somewhere without outbound internet, download Archivo and self-host it in `assets/`.
-- **Print.** The Print button produces a clean three-column year on paper with the filters and navigation stripped out. Filters apply, so you can print just the stores view.
-- **Accessibility.** Keyboard navigable throughout, `Esc` closes any dialog, and `prefers-reduced-motion` is respected. Department colours are always paired with a text label, never used alone.
+- **Print.** The Print button prints **every** month expanded, whichever ones happen to be open on screen — collapsed months stay in the page and are only hidden with CSS, so find-in-page reaches them too. Filters apply, so you can print just the Stores view.
+- **Accessibility.** Keyboard navigable throughout, `Esc` closes any dialog, and `prefers-reduced-motion` is respected. Month rows are real buttons carrying `aria-expanded`. Department colour is never the only signal — the department is always named in the row.
 - **Browsers.** Anything current. No IE support and no polyfills.
