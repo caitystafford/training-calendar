@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Training Calendar · Cashies</title>
+  <meta name="description" content="One view of every piece of training running across Cash Converters — stores, CCPF and head office.">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+  <div class="spectrum">
+    <span style="background:#85e3f4"></span>
+    <span style="background:#e3eb7b"></span>
+    <span style="background:#ecb21f"></span>
+    <span style="background:#ef9281"></span>
+    <span style="background:#b5a4d0"></span>
+  </div>
+
+  <div class="shell">
+
+    <header class="masthead">
+      <div>
+        <div class="eyebrow">Cashies · People &amp; Capability</div>
+        <h1 class="headline">Training Calendar<br><span data-fy>FY</span></h1>
+        <p class="sub">Every piece of training running across the business, in one place. Filter by who it affects, how it is delivered, or which part of the business owns it.</p>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" data-action="print">Print</button>
+        <button class="btn" data-action="log">Log a Workshop</button>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist" aria-label="Views">
+      <button class="tab" role="tab" data-view="calendar" aria-selected="true">Calendar</button>
+      <button class="tab" role="tab" data-view="list" aria-selected="false">List</button>
+      <button class="tab" role="tab" data-view="pandc" aria-selected="false">People &amp; Capability</button>
+    </nav>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="filters" id="filters"></div>
+
+    <main id="content"></main>
+
+  </div>
+
+  <footer class="footer">
+    <span>All for: 1</span>
+    <span>Cash Converters · People &amp; Capability · <span data-fy>FY</span></span>
+  </footer>
+
+  <div id="modal-root"></div>
+
+  <!-- Content lives in the data file. Edit that, not app.js. -->
+  <script src="data/training-data.js"></script>
+  <script src="assets/app.js"></script>
+
+</body>
+</html>
