@@ -128,6 +128,7 @@ h1.headline {
 .btn-ghost:hover { border-color: var(--ink-40); }
 
 .btn-dark { background: var(--navy); color: #fff; }
+.btn-peach { background: #ef9281; color: var(--navy); }
 
 .btn-sm { padding: 11px 20px; font-size: 12px; }
 
@@ -185,14 +186,29 @@ h1.headline {
   display: flex; align-items: center; justify-content: center;
 }
 .stepper button:hover { background: var(--mist); color: var(--ink); }
-.stepper .period-label {
-  min-width: 104px;
-  text-align: center;
+
+/* The year itself is a dropdown, so you can jump straight to a year rather
+   than clicking the arrows repeatedly. */
+.year-select {
+  border: none;
+  background: none;
+  color: var(--ink);
   font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.06em;
   font-variant-numeric: tabular-nums;
+  text-align: center;
+  text-align-last: center;
+  padding: 8px 26px 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 13px top 50%, right 8px top 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
 }
+.year-select:hover { background-color: var(--mist); }
 
 /* --- Business area cards -------------------------------------------------- */
 .areas {
@@ -453,7 +469,10 @@ h1.headline {
   padding: 3px 8px;
   white-space: nowrap;
 }
-.tag-type { color: #fff; }
+/* Department carries the colour — it is how the policy calendar is read.
+   Everything else stays neutral so the colour means one thing only. */
+.tag-dept { }
+.tag-type { background: var(--paper); border: 1px solid var(--ink-40); color: var(--ink-70); }
 .tag-area { background: var(--paper); border: 1px solid var(--line); color: var(--ink-55); }
 .tag-status { background: none; border: 1px dashed var(--ink-40); color: var(--ink-40); }
 .tag-recurring { background: rgba(14, 147, 180, 0.12); color: #0a6d86; }
@@ -490,6 +509,47 @@ h1.headline {
 }
 
 .month-empty { font-size: 12px; font-weight: 600; color: var(--ink-40); letter-spacing: 0.04em; padding: 12px 0; }
+
+/* --- Blackout months ------------------------------------------------------ */
+/* July and December — months we do not schedule training into. Drawn with a
+   faint diagonal hatch so they read as "closed" at a glance. */
+.month.is-blackout {
+  background:
+    repeating-linear-gradient(135deg, transparent 0 7px, rgba(21, 7, 33, 0.035) 7px 14px),
+    var(--paper);
+  border-style: dashed;
+}
+.blackout-tag {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  background: var(--mist);
+  border: 1px solid var(--line);
+  color: var(--ink-55);
+  border-radius: 999px;
+  padding: 4px 9px;
+  white-space: nowrap;
+}
+.blackout-warn {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #7a1526;
+  background: #fdf0f2;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+/* --- Parked --------------------------------------------------------------- */
+.parked-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(262px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+.parked-grid .item { background: var(--paper); border: 1px solid var(--line); border-left-width: 4px; }
+.parked-grid .item:hover { background: var(--mist); }
 
 /* --- List view ------------------------------------------------------------ */
 .list-month { margin-bottom: 30px; animation: fadeUp 0.45s cubic-bezier(.2, .7, .2, 1) both; }
@@ -699,6 +759,7 @@ h1.headline {
 .section-head { display: flex; align-items: center; gap: 12px; margin: 32px 0 16px; }
 .section-head .bar { width: 26px; height: 5px; border-radius: 3px; flex-shrink: 0; }
 .section-head h3 { font-size: 19px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; margin: 0; }
+.section-head .n { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-40); }
 
 /* --- Empty state ---------------------------------------------------------- */
 .empty {
@@ -712,7 +773,8 @@ h1.headline {
 .empty p { font-size: 15px; font-weight: 500; color: var(--ink-55); margin: 0 0 20px; }
 
 /* --- Legend / footer ------------------------------------------------------ */
-.legend { display: flex; gap: 18px; flex-wrap: wrap; padding: 22px 0 0; margin-top: 26px; border-top: 1px solid var(--line); }
+.legend { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; padding: 22px 0 0; margin-top: 30px; border-top: 1px solid var(--line); }
+.legend-label { font-size: 11px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-40); }
 .legend-item { display: flex; align-items: center; gap: 8px; }
 .legend-item .swatch { width: 12px; height: 12px; border-radius: 3px; }
 .legend-item .t { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-55); }
