@@ -11,18 +11,33 @@
   /* --- State ------------------------------------------------------------- */
   const state = {
     view: "calendar",           // calendar | list | pandc
-    streams: new Set(),         // empty = all
-    types: new Set(),
-    areas: new Set(),
+    area: null,                 // null = All, otherwise a BUSINESS_AREAS key
+    types: new Set(),           // empty = all
+    categories: new Set(),      // empty = all
+    thisMonth: false,           // restrict to the current calendar month
     search: "",
-    openItem: null,
-    modal: null,                // null | 'detail' | 'log'
+    periodMode: "fy",           // fy | cy
+    periodYear: FY.startYear,   // year the visible window starts in
+    modal: null,                // null | 'detail' | 'log' | 'log-done'
   };
 
   const MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"];
 
   const STATES_AU = ["WA", "NSW", "VIC", "QLD", "SA", "TAS", "NT", "ACT", "National"];
+
+  /* --- Icons -------------------------------------------------------------- */
+  const ICONS = {
+    all: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    stores: '<path d="M3 9h18l-1.6-5H4.6L3 9Z"/><path d="M5 9v11h14V9"/><path d="M9.5 20v-5.5h5V20"/>',
+    ccpf: '<circle cx="12" cy="12" r="9"/><path d="M12 6.5v11"/><path d="M14.8 9.4c0-1.1-1.25-2-2.8-2s-2.8.9-2.8 2 1.25 2 2.8 2 2.8.9 2.8 2-1.25 2-2.8 2-2.8-.9-2.8-2"/>',
+    "head-office": '<path d="M4 21V6l8-3 8 3v15"/><path d="M3 21h18"/><path d="M9.5 21v-5h5v5"/><path d="M8.5 9.5h.01M12 9.5h.01M15.5 9.5h.01M8.5 13h.01M15.5 13h.01"/>',
+    external: '<path d="M14 3h7v7"/><path d="M10.5 13.5 21 3"/><path d="M21 14.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5.5"/>',
+  };
+
+  function icon(name, cls) {
+    return `<svg viewBox="0 0 24 24" class="${cls || ""}" aria-hidden="true">${ICONS[name] || ""}</svg>`;
+  }
 
   /* --- Small helpers ----------------------------------------------------- */
   const $ = (sel) => document.querySelector(sel);
@@ -33,25 +48,52 @@
       .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
-  /* Every month key in the financial year, e.g. ["2026-07", ... "2027-06"] */
-  function fyMonths() {
-    const [y, m] = FY.startMonth.split("-").map(Number);
+  /* Pick navy or white text for a coloured background, whichever reads better. */
+  function textOn(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    const srgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+      const c = v / 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    const L = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+    const vsWhite = 1.05 / (L + 0.05);
+    const vsNavy = (L + 0.05) / 0.0655;   // #150721 has luminance ≈ 0.0155
+    return vsNavy >= vsWhite ? "#150721" : "#ffffff";
+  }
+
+  /* --- Period (financial year / calendar year) ---------------------------- */
+  function periodMonths() {
+    const startMonth = state.periodMode === "fy" ? FY.startMonth : 1;
     const out = [];
-    for (let i = 0; i < FY.months; i++) {
-      const d = new Date(y, m - 1 + i, 1);
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(state.periodYear, startMonth - 1 + i, 1);
       out.push(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"));
     }
     return out;
   }
 
+  function periodLabel() {
+    if (state.periodMode === "cy") return String(state.periodYear);
+    return "FY" + String(state.periodYear).slice(2) + "/" + String(state.periodYear + 1).slice(2);
+  }
+
   function monthLabel(key) {
     const [y, m] = key.split("-").map(Number);
-    return { name: MONTH_NAMES[m - 1], short: MONTH_NAMES[m - 1].slice(0, 3), year: y };
+    return { name: MONTH_NAMES[m - 1], year: y };
   }
 
   function currentMonthKey() {
     const d = new Date();
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+  }
+
+  /* Move the visible window so it contains the current month. */
+  function snapPeriodToNow() {
+    if (periodMonths().includes(currentMonthKey())) return;
+    const d = new Date();
+    state.periodYear = state.periodMode === "cy"
+      ? d.getFullYear()
+      : (d.getMonth() + 1 >= FY.startMonth ? d.getFullYear() : d.getFullYear() - 1);
   }
 
   /* The months an item appears in — supports both `month` and `months`. */
@@ -60,17 +102,21 @@
     return item.month ? [item.month] : [];
   }
 
-  function typeOf(item) { return TYPES[item.type] || { label: item.type, short: item.type, colour: "#372550" }; }
+  function typeOf(item) {
+    return TYPES[item.type] || { label: item.type, short: item.type, colour: "#8a7f99" };
+  }
 
   /* --- Filtering ---------------------------------------------------------- */
   /* `skip` lets us compute facet counts by ignoring one dimension at a time. */
   function matches(item, skip) {
-    if (skip !== "streams" && state.streams.size) {
-      const s = item.streams || [];
-      if (!s.some((x) => state.streams.has(x))) return false;
+    if (skip !== "area" && state.area) {
+      if (!(item.areas || []).includes(state.area)) return false;
     }
     if (skip !== "types" && state.types.size && !state.types.has(item.type)) return false;
-    if (skip !== "areas" && state.areas.size && !state.areas.has(item.area)) return false;
+    if (skip !== "categories" && state.categories.size && !state.categories.has(item.category)) return false;
+    if (skip !== "thisMonth" && state.thisMonth) {
+      if (!itemMonths(item).includes(currentMonthKey())) return false;
+    }
     if (skip !== "search" && state.search) {
       const hay = [item.title, item.summary, item.owner, item.audience].join(" ").toLowerCase();
       if (!hay.includes(state.search)) return false;
@@ -80,29 +126,36 @@
 
   function filtered() { return TRAINING.filter((i) => matches(i)); }
 
+  /* Items that pass the filters but fall outside the visible year. */
+  function outsidePeriod(items) {
+    const window = periodMonths();
+    return items.filter((i) => !itemMonths(i).some((m) => window.includes(m))).length;
+  }
+
   function facetCount(dimension, value) {
     return TRAINING.filter((item) => {
       if (!matches(item, dimension)) return false;
-      if (dimension === "streams") return (item.streams || []).includes(value);
+      if (dimension === "area") return (item.areas || []).includes(value);
       if (dimension === "types") return item.type === value;
-      if (dimension === "areas") return item.area === value;
+      if (dimension === "categories") return item.category === value;
       return true;
     }).length;
   }
 
   function anyFilterActive() {
-    return state.streams.size > 0 || state.types.size > 0 || state.areas.size > 0 || state.search !== "";
+    return state.area !== null || state.types.size > 0 || state.categories.size > 0 ||
+      state.thisMonth || state.search !== "";
   }
 
   /* --- Shared fragments --------------------------------------------------- */
   function typeTag(item) {
     const t = typeOf(item);
-    return `<span class="tag tag-type" style="background:${t.colour}">${esc(t.short)}</span>`;
+    return `<span class="tag tag-type" style="background:${t.colour};color:${textOn(t.colour)}">${esc(t.short)}</span>`;
   }
 
-  function streamTags(item) {
-    return (item.streams || [])
-      .map((s) => `<span class="tag tag-stream">${esc((STREAMS[s] || { short: s }).short)}</span>`)
+  function areaTags(item) {
+    return (item.areas || [])
+      .map((a) => `<span class="tag tag-area">${esc((BUSINESS_AREAS[a] || { short: a }).short)}</span>`)
       .join("");
   }
 
@@ -115,9 +168,23 @@
     return itemMonths(item).length > 1 ? `<span class="tag tag-recurring">Recurring</span>` : "";
   }
 
+  /* Resources link — shown on everything except online modules, where the
+     module itself is the resource. */
+  function resourceLink(item) {
+    if (item.type === "online") {
+      return item.link
+        ? `<a class="res-link" href="${esc(item.link)}" target="_blank" rel="noopener">${icon("external")}Module</a>`
+        : "";
+    }
+    if (item.resources) {
+      return `<a class="res-link" href="${esc(item.resources)}" target="_blank" rel="noopener">${icon("external")}Resources</a>`;
+    }
+    return `<span class="res-link is-empty">Resources to come</span>`;
+  }
+
   /* --- Views -------------------------------------------------------------- */
   function renderCalendar(items) {
-    const months = fyMonths();
+    const months = periodMonths();
     const now = currentMonthKey();
 
     const cells = months.map((key, idx) => {
@@ -128,20 +195,21 @@
 
       const body = inMonth.length
         ? inMonth.map((i) => `
-            <button class="item" data-id="${esc(i.id)}" style="border-left-color:${typeOf(i).colour}">
+            <div class="item" data-id="${esc(i.id)}" role="button" tabindex="0"
+                 style="border-left-color:${typeOf(i).colour}">
               <div class="item-title">${esc(i.title)}</div>
-              <div class="item-meta">${typeTag(i)}${streamTags(i)}${recurringTag(i)}${statusTag(i)}</div>
-            </button>`).join("")
+              <div class="item-meta">${typeTag(i)}${areaTags(i)}${recurringTag(i)}${statusTag(i)}${resourceLink(i)}</div>
+            </div>`).join("")
         : `<div class="month-empty">${anyFilterActive() ? "Nothing matching" : "Nothing scheduled"}</div>`;
 
       return `
-        <section class="month${isPast ? " is-past" : ""}${isCurrent ? " is-current" : ""}" style="animation-delay:${idx * 22}ms">
+        <section class="month${isPast ? " is-past" : ""}${isCurrent ? " is-current" : ""}" style="animation-delay:${idx * 20}ms">
           <div class="month-head">
             <div>
               <div class="month-name">${esc(label.name)}</div>
               <div class="month-year">${label.year}</div>
             </div>
-            ${isCurrent ? '<span class="now-tag">Now</span>' : `<span class="month-count">${inMonth.length}</span>`}
+            ${isCurrent ? '<span class="now-tag">This month</span>' : `<span class="month-count">${inMonth.length}</span>`}
           </div>
           ${body}
         </section>`;
@@ -151,20 +219,20 @@
   }
 
   function renderList(items) {
-    const months = fyMonths();
-    const blocks = months.map((key) => {
+    const blocks = periodMonths().map((key) => {
       const inMonth = items.filter((i) => itemMonths(i).includes(key));
       if (!inMonth.length) return "";
       const label = monthLabel(key);
       const rows = inMonth.map((i) => `
-        <button class="row" data-id="${esc(i.id)}" style="border-left-color:${typeOf(i).colour}">
-          <div class="r-tags">${typeTag(i)}${streamTags(i)}${recurringTag(i)}${statusTag(i)}</div>
+        <div class="row" data-id="${esc(i.id)}" role="button" tabindex="0"
+             style="border-left-color:${typeOf(i).colour}">
+          <div class="r-tags">${typeTag(i)}${areaTags(i)}${recurringTag(i)}${statusTag(i)}</div>
           <div>
             <div class="r-title">${esc(i.title)}</div>
             ${i.summary ? `<div class="r-sum">${esc(i.summary)}</div>` : ""}
           </div>
-          <div class="r-tags">${i.owner ? `<span class="tag tag-stream">${esc(i.owner)}</span>` : ""}</div>
-        </button>`).join("");
+          <div class="r-tags">${resourceLink(i)}</div>
+        </div>`).join("");
 
       return `
         <div class="list-month">
@@ -182,23 +250,24 @@
   }
 
   function renderPandC() {
-    const months = fyMonths();
-    const byMonth = months
-      .map((key) => ({ key, items: PANDC_YEAR.filter((p) => p.month === key) }))
-      .filter((g) => g.items.length);
+    const months = periodMonths();
+    const kindColour = (k) => (k === "feedback" ? "#0a9fbd" : "#8b6fb8");
 
-    const kindColour = (k) => (k === "feedback" ? "#85e3f4" : "#b5a4d0");
-
-    const timeline = byMonth.map((g) => {
-      const label = monthLabel(g.key);
-      return g.items.map((p, n) => `
+    const rows = months.map((key) => {
+      const inMonth = PANDC_YEAR.filter((p) => p.month === key);
+      if (!inMonth.length) return "";
+      const label = monthLabel(key);
+      return inMonth.map((p, n) => `
         <div class="pc-item">
           <div class="pc-month">${n === 0 ? esc(label.name) + " " + label.year : ""}</div>
           <div class="pc-dot" style="background:${kindColour(p.kind)}"></div>
           <div>
-            <div class="pc-title">${esc(p.title)}<span class="pc-kind" style="background:${kindColour(p.kind)};color:#150721">${p.kind === "feedback" ? "Feedback" : "Cycle"}</span></div>
+            <div class="pc-title">${esc(p.title)}<span class="pc-kind" style="background:${kindColour(p.kind)}">${p.kind === "feedback" ? "Feedback" : "Cycle"}</span></div>
             ${p.summary ? `<div class="pc-sum">${esc(p.summary)}</div>` : ""}
           </div>
+          <div>${p.resources
+            ? `<a class="res-link" href="${esc(p.resources)}" target="_blank" rel="noopener">${icon("external")}Resources</a>`
+            : `<span class="res-link is-empty">Resources to come</span>`}</div>
         </div>`).join("");
     }).join("");
 
@@ -213,16 +282,16 @@
     return `
       <div class="pc-intro">
         <h2>The People &amp; Capability Year</h2>
-        <p>Every point across ${esc(FY.label)} where we ask the business for feedback, alongside the P&amp;C cycle milestones that sit around them. ${feedbackCount} formal feedback moments, plus ${PANDC_CONTINUOUS.length} channels running continuously in the background.</p>
+        <p>Every point across ${esc(periodLabel())} where we ask the business for feedback, alongside the P&amp;C cycle milestones that sit around them. ${feedbackCount} formal feedback moments, plus ${PANDC_CONTINUOUS.length} channels running continuously in the background.</p>
       </div>
 
-      <div class="section-head"><span class="bar" style="background:#85e3f4"></span><h3>Across the year</h3></div>
-      <div class="pc-timeline">${timeline}</div>
+      <div class="section-head"><span class="bar" style="background:#0a9fbd"></span><h3>Across the year</h3></div>
+      ${rows ? `<div class="pc-timeline">${rows}</div>` : `<div class="empty"><h3>Nothing in this year</h3><p>Use the year toggle above to move to a year with P&amp;C activity in it.</p></div>`}
 
-      <div class="section-head"><span class="bar" style="background:#b5a4d0"></span><h3>Running continuously</h3></div>
+      <div class="section-head"><span class="bar" style="background:#8b6fb8"></span><h3>Running continuously</h3></div>
       <div class="pc-cont">${continuous}</div>
 
-      <div class="note-draft" style="background:#241335;color:rgba(255,255,255,0.8);border-left-color:#ecb21f;margin-top:30px">
+      <div class="note-draft">
         <b>These are placeholders.</b> The P&amp;C year has not been filled in from a source document yet — the dates and items above are examples to show the structure. Edit <code>PANDC_YEAR</code> in <code>data/training-data.js</code> to replace them with the real calendar.
       </div>`;
   }
@@ -240,20 +309,51 @@
     return `
       <div class="empty">
         <h3>Nothing matches those filters</h3>
-        <p>Try widening the audience or delivery type.</p>
+        <p>Try a different business area, or widen the delivery type.</p>
         <button class="btn btn-ghost" data-action="reset">Clear all filters</button>
       </div>`;
   }
 
-  /* --- Filter panel ------------------------------------------------------- */
+  /* --- Controls ----------------------------------------------------------- */
+  function renderPeriod() {
+    return `
+      <div class="segmented" role="group" aria-label="Year type">
+        <button class="seg" data-period-mode="fy" aria-pressed="${state.periodMode === "fy"}">Financial year</button>
+        <button class="seg" data-period-mode="cy" aria-pressed="${state.periodMode === "cy"}">Calendar year</button>
+      </div>
+      <div class="stepper">
+        <button data-period-step="-1" aria-label="Previous year">&#8249;</button>
+        <span class="period-label">${esc(periodLabel())}</span>
+        <button data-period-step="1" aria-label="Next year">&#8250;</button>
+      </div>`;
+  }
+
+  function renderAreas() {
+    const cards = [["", { label: "All areas", blurb: "Everything across the business", iconKey: "all" }]]
+      .concat(Object.entries(BUSINESS_AREAS).map(([k, v]) => [k, Object.assign({ iconKey: k }, v)]));
+
+    return cards.map(([key, meta]) => {
+      const on = key === "" ? state.area === null : state.area === key;
+      const n = key === "" ? TRAINING.filter((i) => matches(i, "area")).length : facetCount("area", key);
+      return `
+        <button class="area-card" data-area="${esc(key)}" aria-pressed="${on}">
+          <span class="ico">${icon(meta.iconKey)}</span>
+          <span>
+            <span class="a-name">${esc(meta.label)}</span>
+            <span class="a-blurb">${esc(meta.blurb)}</span>
+          </span>
+          <span class="a-count">${n} item${n === 1 ? "" : "s"}</span>
+        </button>`;
+    }).join("");
+  }
+
   function chipRow(label, dimension, entries) {
     const chips = entries.map(([value, meta]) => {
       const on = state[dimension].has(value);
       const n = facetCount(dimension, value);
       return `
-        <button class="chip" role="button" aria-pressed="${on}"
-                data-dim="${dimension}" data-value="${esc(value)}"
-                ${n === 0 && !on ? 'style="opacity:.4"' : ""}>
+        <button class="chip" aria-pressed="${on}" data-dim="${dimension}" data-value="${esc(value)}"
+                ${n === 0 && !on ? 'style="opacity:.45"' : ""}>
           ${meta.colour ? `<span class="swatch" style="background:${meta.colour}"></span>` : ""}
           ${esc(meta.label)}<span class="count">${n}</span>
         </button>`;
@@ -267,40 +367,32 @@
   }
 
   function renderFilters() {
-    const total = filtered().length;
+    const items = filtered();
+    const outside = outsidePeriod(items);
+    const nowLabel = monthLabel(currentMonthKey());
+
     return `
-      ${chipRow("Audience", "streams", Object.entries(STREAMS))}
       ${chipRow("Delivery", "types", Object.entries(TYPES))}
-      ${chipRow("Business area", "areas", Object.entries(AREAS))}
+      ${chipRow("Category", "categories", Object.entries(CATEGORIES))}
       <div class="filter-row">
-        <div class="filter-label">Search</div>
+        <div class="filter-label">Refine</div>
+        <div class="chips" style="flex:0 0 auto">
+          <button class="chip chip-now" aria-pressed="${state.thisMonth}" data-action="this-month">
+            This month · ${esc(nowLabel.name)}
+          </button>
+        </div>
         <div class="search-wrap">
           <input class="search" id="search" type="search" placeholder="Search training, owner or audience…"
                  value="${esc(state.search)}" autocomplete="off">
         </div>
       </div>
       <div class="filter-meta">
-        <div class="result-count">Showing <b>${total}</b> of <b>${TRAINING.length}</b> items</div>
+        <div class="result-count">
+          Showing <b>${items.length}</b> of <b>${TRAINING.length}</b> items
+          ${outside ? `<span class="outside">· ${outside} outside ${esc(periodLabel())}</span>` : ""}
+        </div>
         ${anyFilterActive() ? '<button class="link-btn" data-action="reset">Clear all filters</button>' : ""}
       </div>`;
-  }
-
-  function renderKpis() {
-    const items = filtered();
-    const count = (fn) => items.filter(fn).length;
-    const tiles = [
-      { n: items.length, l: "Total items", c: "#372550" },
-      { n: count((i) => i.type === "workshop"), l: "Workshops", c: TYPES.workshop.colour },
-      { n: count((i) => i.type === "online"), l: "Online", c: TYPES.online.colour },
-      { n: count((i) => i.type === "policy"), l: "Policy", c: TYPES.policy.colour },
-      { n: count((i) => (i.streams || []).includes("stores")), l: "Affecting stores", c: "#372550" },
-      { n: count((i) => (i.streams || []).includes("ccpf")), l: "Affecting CCPF", c: "#372550" },
-    ];
-    return tiles.map((t) => `
-      <div class="kpi" style="border-top-color:${t.c}">
-        <div class="n">${t.n}</div>
-        <div class="l">${esc(t.l)}</div>
-      </div>`).join("");
   }
 
   /* --- Detail modal ------------------------------------------------------- */
@@ -314,9 +406,9 @@
     const cells = [
       ["When", months],
       ["Delivery", t.label],
-      ["Business area", (AREAS[item.area] || {}).label],
+      ["Business area", (item.areas || []).map((a) => (BUSINESS_AREAS[a] || { label: a }).label).join(", ")],
+      ["Category", (CATEGORIES[item.category] || {}).label],
       ["Audience", item.audience],
-      ["Affects", (item.streams || []).map((s) => (STREAMS[s] || { label: s }).label).join(", ")],
       ["Owner", item.owner],
       ["Status", (STATUSES[item.status] || {}).label],
     ].filter(([, v]) => v).map(([k, v]) => `
@@ -329,12 +421,24 @@
       note = `<div class="note-draft"><b>${esc((STATUSES[item.status] || {}).label)}.</b> Dates and detail are not locked in yet.</div>`;
     }
 
+    let action = "";
+    if (item.type === "online") {
+      action = item.link
+        ? `<a class="btn btn-dark btn-link" href="${esc(item.link)}" target="_blank" rel="noopener">${icon("external")}Open module</a>`
+        : "";
+    } else if (item.resources) {
+      action = `<a class="btn btn-dark btn-link" href="${esc(item.resources)}" target="_blank" rel="noopener">${icon("external")}Resources</a>`;
+    } else {
+      action = `<span class="result-count" style="margin-right:auto">No resources linked yet</span>`;
+    }
+
+    const ink = textOn(t.colour);
     return `
       <div class="overlay" data-close="1">
         <div class="panel" role="dialog" aria-modal="true" aria-label="${esc(item.title)}" tabindex="-1">
           <div class="panel-head" style="background:${t.colour}">
-            <div class="p-eyebrow">${esc(t.label)}${item.owner ? " · " + esc(item.owner) : ""}</div>
-            <h2>${esc(item.title)}</h2>
+            <div class="p-eyebrow" style="color:${ink === "#ffffff" ? "rgba(255,255,255,0.75)" : "rgba(21,7,33,0.7)"}">${esc(t.label)}</div>
+            <h2 style="color:${ink}">${esc(item.title)}</h2>
           </div>
           <div class="panel-body">
             <div class="detail-grid">${cells}</div>
@@ -342,7 +446,7 @@
             ${note}
           </div>
           <div class="panel-foot">
-            ${item.link ? `<a class="btn btn-ghost" style="color:#150721;border-color:#e2dee9;text-decoration:none;display:inline-block" href="${esc(item.link)}" target="_blank" rel="noopener">Open</a>` : ""}
+            ${action}
             <button class="btn" data-close="1">Close</button>
           </div>
         </div>
@@ -351,8 +455,8 @@
 
   /* --- Log a workshop ----------------------------------------------------- */
   function workshopOptions() {
-    const titles = Array.from(new Set(TRAINING.map((i) => i.title))).sort();
-    return titles.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join("");
+    return Array.from(new Set(TRAINING.map((i) => i.title))).sort()
+      .map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join("");
   }
 
   function renderLogForm(errorMsg) {
@@ -368,8 +472,8 @@
       <div class="overlay" data-close="1">
         <div class="panel panel-wide" role="dialog" aria-modal="true" aria-label="Log a workshop" tabindex="-1">
           <div class="panel-head" style="background:${TYPES.workshop.colour}">
-            <div class="p-eyebrow">People &amp; Capability</div>
-            <h2>Log a Workshop</h2>
+            <div class="p-eyebrow" style="color:rgba(21,7,33,0.7)">People &amp; Capability</div>
+            <h2 style="color:#150721">Log a Workshop</h2>
           </div>
           <div class="panel-body">
             ${errorMsg ? `<div class="form-error">${esc(errorMsg)}</div>` : ""}
@@ -408,9 +512,9 @@
 
               <div class="field-2">
                 <div class="field">
-                  <label for="f-stream">Audience</label>
-                  <select id="f-stream" name="stream">
-                    ${Object.entries(STREAMS).map(([k, v]) => `<option value="${esc(k)}">${esc(v.label)}</option>`).join("")}
+                  <label for="f-area">Business area</label>
+                  <select id="f-area" name="businessArea">
+                    ${Object.entries(BUSINESS_AREAS).map(([k, v]) => `<option value="${esc(k)}">${esc(v.label)}</option>`).join("")}
                   </select>
                 </div>
                 <div class="field">
@@ -446,7 +550,7 @@
             </form>
           </div>
           <div class="panel-foot">
-            <button class="btn btn-ghost" style="color:#150721;border-color:#e2dee9" data-close="1">Cancel</button>
+            <button class="btn btn-ghost" data-close="1">Cancel</button>
             <button class="btn" id="log-submit">Submit</button>
           </div>
         </div>
@@ -457,7 +561,7 @@
     return `
       <div class="overlay" data-close="1">
         <div class="panel" role="dialog" aria-modal="true" aria-label="Workshop logged" tabindex="-1">
-          <div class="panel-body" style="border-radius:22px">
+          <div class="panel-body">
             <div class="success">
               <div class="tick">&#10003;</div>
               <h3>Workshop logged</h3>
@@ -472,9 +576,8 @@
   }
 
   function collectForm() {
-    const form = $("#log-form");
     const data = {};
-    new FormData(form).forEach((v, k) => { data[k] = typeof v === "string" ? v.trim() : v; });
+    new FormData($("#log-form")).forEach((v, k) => { data[k] = typeof v === "string" ? v.trim() : v; });
     return data;
   }
 
@@ -486,32 +589,29 @@
       ["trainer", "Trainer"],
       ["attendeeCount", "Number of attendees"],
     ];
-    for (const [key, label] of required) {
-      if (!data[key]) return label + " is required.";
-    }
+    for (const [key, label] of required) if (!data[key]) return label + " is required.";
     if (!(Number(data.attendeeCount) > 0)) return "Number of attendees must be at least 1.";
     return null;
   }
 
   function asPlainText(data) {
-    const lines = [
-      "Workshop:  " + data.workshop,
-      "Date:      " + data.dateDelivered,
-      "State:     " + data.state,
-      "Trainer:   " + data.trainer,
-      "Location:  " + (data.location || "—"),
-      "Audience:  " + ((STREAMS[data.stream] || {}).label || data.stream || "—"),
-      "Format:    " + (data.format || "—"),
-      "Attendees: " + data.attendeeCount,
-      "Duration:  " + (data.durationHours ? data.durationHours + " hours" : "—"),
+    return [
+      "Workshop:      " + data.workshop,
+      "Date:          " + data.dateDelivered,
+      "State:         " + data.state,
+      "Trainer:       " + data.trainer,
+      "Location:      " + (data.location || "—"),
+      "Business area: " + ((BUSINESS_AREAS[data.businessArea] || {}).label || data.businessArea || "—"),
+      "Format:        " + (data.format || "—"),
+      "Attendees:     " + data.attendeeCount,
+      "Duration:      " + (data.durationHours ? data.durationHours + " hours" : "—"),
       "",
       "Who attended:",
       data.attendees || "—",
       "",
       "Notes:",
       data.notes || "—",
-    ];
-    return lines.join("\n");
+    ].join("\n");
   }
 
   async function submitLog() {
@@ -547,10 +647,8 @@
     try { await navigator.clipboard.writeText(body); } catch (e) { /* clipboard may be blocked; email still opens */ }
 
     const subject = "Workshop logged: " + data.workshop + " (" + data.state + ", " + data.dateDelivered + ")";
-    const mailto = "mailto:" + encodeURIComponent(WORKSHOP_LOG.fallbackEmail) +
-      "?subject=" + encodeURIComponent(subject) +
-      "&body=" + encodeURIComponent(body);
-    window.location.href = mailto;
+    window.location.href = "mailto:" + encodeURIComponent(WORKSHOP_LOG.fallbackEmail) +
+      "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
 
     state.modal = "log-done";
     paint(renderLogSuccess("Copied to your clipboard and an email has been opened to " + WORKSHOP_LOG.fallbackEmail + ". If the email did not open, just paste it in yourself."));
@@ -569,19 +667,21 @@
   }
 
   function render() {
-    const items = filtered();
+    const isPandC = state.view === "pandc";
 
-    $("#kpis").innerHTML = renderKpis();
+    $("#period").innerHTML = renderPeriod();
+    $("#areas").innerHTML = renderAreas();
     $("#filters").innerHTML = renderFilters();
-    $("#filters").style.display = state.view === "pandc" ? "none" : "";
-    $("#kpis").style.display = state.view === "pandc" ? "none" : "";
+    $("#areas").style.display = isPandC ? "none" : "";
+    $("#filters").style.display = isPandC ? "none" : "";
 
     document.querySelectorAll(".tab").forEach((t) => {
       t.setAttribute("aria-selected", String(t.dataset.view === state.view));
     });
 
+    const items = filtered();
     let html;
-    if (state.view === "pandc") html = renderPandC();
+    if (isPandC) html = renderPandC();
     else if (!items.length) html = emptyState();
     else if (state.view === "list") html = renderList(items);
     else html = renderCalendar(items);
@@ -598,26 +698,47 @@
 
   function closeModal() {
     state.modal = null;
-    state.openItem = null;
     paint(null);
   }
 
+  function openDetail(id) {
+    const item = TRAINING.find((i) => i.id === id);
+    if (item) { state.modal = "detail"; paint(renderDetail(item)); }
+  }
+
   document.addEventListener("click", (e) => {
-    // Modal close — a click on the backdrop itself, or any close button.
+    // Real links always win — never swallow a resources click.
+    if (e.target.closest("a[href]")) return;
+
     if (e.target.classList.contains("overlay")) { closeModal(); return; }
     if (e.target.closest("button[data-close]")) { closeModal(); return; }
+    if (e.target.closest("#log-submit")) { submitLog(); return; }
 
     const tab = e.target.closest(".tab");
     if (tab) { state.view = tab.dataset.view; render(); return; }
 
-    const chip = e.target.closest(".chip");
+    const mode = e.target.closest("[data-period-mode]");
+    if (mode) { state.periodMode = mode.dataset.periodMode; render(); return; }
+
+    const step = e.target.closest("[data-period-step]");
+    if (step) { state.periodYear += Number(step.dataset.periodStep); render(); return; }
+
+    const areaCard = e.target.closest(".area-card");
+    if (areaCard) { state.area = areaCard.dataset.area || null; render(); return; }
+
+    const chip = e.target.closest(".chip[data-dim]");
     if (chip) { toggle(chip.dataset.dim, chip.dataset.value); return; }
 
     const action = e.target.closest("[data-action]");
     if (action) {
       const a = action.dataset.action;
       if (a === "reset") {
-        state.streams.clear(); state.types.clear(); state.areas.clear(); state.search = "";
+        state.area = null; state.types.clear(); state.categories.clear();
+        state.thisMonth = false; state.search = "";
+        render();
+      } else if (a === "this-month") {
+        state.thisMonth = !state.thisMonth;
+        if (state.thisMonth) snapPeriodToNow();
         render();
       } else if (a === "log") {
         if (WORKSHOP_LOG.mode === "form" && WORKSHOP_LOG.formUrl) {
@@ -632,30 +753,28 @@
       return;
     }
 
-    if (e.target.closest("#log-submit")) { submitLog(); return; }
-
-    const card = e.target.closest(".item, .row");
-    if (card) {
-      const item = TRAINING.find((i) => i.id === card.dataset.id);
-      if (item) { state.openItem = item; state.modal = "detail"; paint(renderDetail(item)); }
-    }
+    const card = e.target.closest("[data-id]");
+    if (card) openDetail(card.dataset.id);
   });
 
   document.addEventListener("input", (e) => {
-    if (e.target.id === "search") {
-      state.search = e.target.value.trim().toLowerCase();
-      const pos = e.target.selectionStart;
-      render();
-      const next = $("#search");
-      if (next) { next.focus(); try { next.setSelectionRange(pos, pos); } catch (err) {} }
-    }
+    if (e.target.id !== "search") return;
+    state.search = e.target.value.trim().toLowerCase();
+    const pos = e.target.selectionStart;
+    render();
+    const next = $("#search");
+    if (next) { next.focus(); try { next.setSelectionRange(pos, pos); } catch (err) {} }
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && state.modal) closeModal();
+    if (e.key === "Escape" && state.modal) { closeModal(); return; }
+    if ((e.key === "Enter" || e.key === " ") && !state.modal) {
+      const card = e.target.closest && e.target.closest("[data-id][role='button']");
+      if (card) { e.preventDefault(); openDetail(card.dataset.id); }
+    }
   });
 
   /* --- Boot --------------------------------------------------------------- */
-  document.querySelectorAll("[data-fy]").forEach((el) => { el.textContent = FY.label; });
+  snapPeriodToNow();
   render();
 })();

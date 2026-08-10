@@ -1,8 +1,16 @@
 # Cashies Training Calendar
 
-One view of every piece of training running across the business for FY26/27 — stores, CCPF and head office — filterable by audience, delivery type and business area, plus a People & Capability view of the feedback year and a **Log a Workshop** button for state trainers.
+One view of every piece of training running across the business — Stores, CCPF and Head Office — filterable by business area, delivery type and category, plus a People & Capability view of the feedback year and a **Log a Workshop** button for state trainers.
 
 Built as a plain static site. No build step, no server, no backend, no dependencies. Open `index.html` and it works.
+
+## What's on the page
+
+- **Business area cards** — All / Stores / CCPF / Head Office. One click, whole calendar reframes.
+- **Financial year ⇄ calendar year toggle**, with arrows to step between years. The counter tells you how many items fall outside the year you are looking at.
+- **This month** filter, which also jumps the calendar to the right year if you are looking at a different one.
+- **Delivery** and **Category** chips, with live counts that update as you narrow.
+- **Resources link** on every card except online modules, where the module itself is the resource.
 
 ---
 
@@ -16,21 +24,26 @@ A training item looks like this:
 
 ```js
 {
-  id:       "stores-jewellery",     // unique, lowercase, no spaces
-  title:    "Jewellery",            // shows on the card
-  month:    "2026-11",              // YYYY-MM
-  type:     "workshop",             // workshop | online | policy | webinar | activity
-  area:     "operations",           // whs | operations | leadership | compliance | ai | pandc
-  streams:  ["stores"],             // stores | ccpf | head-office — can be several
-  status:   "draft",                // confirmed | draft | proposed
-  owner:    "People & Capability",
-  audience: "Store team members",
-  summary:  "Jewellery product knowledge, valuation and merchandising.",
-  link:     ""                      // optional, e.g. a CCLearn course URL
+  id:        "stores-jewellery",    // unique, lowercase, no spaces
+  title:     "Jewellery",           // shows on the card
+  month:     "2026-11",             // YYYY-MM
+  type:      "workshop",            // workshop | online | policy | webinar | activity
+  areas:     ["stores"],            // stores | ccpf | head-office — can be several
+  category:  "operations",          // whs | operations | leadership | compliance | ai | pandc
+  status:    "draft",               // confirmed | draft | proposed
+  owner:     "People & Capability",
+  audience:  "Store team members",
+  summary:   "Jewellery product knowledge, valuation and merchandising.",
+  resources: ""                     // link to slides, guides, handouts
 },
 ```
 
 Only `id`, `title`, `month` and `type` are required.
+
+Two fields are easy to mix up:
+
+- **`areas`** is the *business area* — who it affects. Stores, CCPF, Head Office. These are the big cards at the top.
+- **`category`** is the *subject* — WHS, Leadership, Compliance and so on. These are the smaller chips.
 
 **Runs across several months?** Swap `month` for `months`:
 
@@ -40,17 +53,26 @@ months: ["2026-08", "2026-09", "2026-10", "2026-11"],
 
 The item then appears in every month listed and is badged **Recurring**.
 
-**Rolling to a new financial year?** Change the two lines in the `FY` block at the top of the same file.
+**Rolling to a new financial year?** Change the `FY` block at the top of the same file. Note the app can already show any year via the toggle — `FY` only sets where it opens.
 
 Save the file, refresh the browser. That is the whole update process.
+
+### Resources links
+
+Every item that is not an online module has a `resources` field. Paste a SharePoint folder link, a Teams file link, or anything else — it becomes a **Resources** button on the card and in the detail panel.
+
+Leave it as `""` and the card shows a quiet *Resources to come*, so you can see at a glance which sessions still need their materials attached.
+
+Online modules use `link` instead, pointing at the CCLearn course.
 
 ### Things worth knowing about the current data
 
 - Everything currently in the calendar came from the **Draft Annual Planner (Jul 26 – Jun 27)** spreadsheet, so it is all marked `status: "draft"`. Move items to `"confirmed"` as dates lock in — confirmed items lose the DRAFT badge.
 - Two items in the planner had question marks against them (Webshop, PF Workshops). They are marked `"proposed"`.
-- **WHS training is currently tagged to all three streams**, because health and safety applies right across the business. That makes the Stores filter show 23 of 26 items. If some WHS modules are genuinely store-only or head-office-only, trim the `streams` list on those items and the filters will sharpen up considerably.
+- **WHS training is currently tagged to all three business areas**, because health and safety applies right across the business. That makes Stores show 23 of 26 items. If some WHS modules are genuinely store-only or head-office-only, trim the `areas` list on those items and the filters will sharpen up considerably.
 - The planner listed both "Bullying and Harrassment" (Aug 26) and "Harrasment" (Jun 27). Both are in the calendar, with a note on the June one — worth confirming whether both are intended.
 - Head Office training and the entire People & Capability year are **placeholders**. They were not in the spreadsheet. Everything seeded is marked `source: "placeholder"` and flagged in the app so nobody mistakes it for a real plan. Replace them.
+- **No `resources` links are set yet.** Every card currently reads *Resources to come*.
 
 ---
 
@@ -73,7 +95,7 @@ Trainers stay inside the app and submissions land straight in a list P&C can sor
    | `State` | Choice — WA, NSW, VIC, QLD, SA, TAS, NT, ACT, National |
    | `Trainer` | Single line of text |
    | `Location` | Single line of text |
-   | `Stream` | Choice — stores, ccpf, head-office |
+   | `BusinessArea` | Choice — stores, ccpf, head-office |
    | `Format` | Choice — Face to face, Virtual, Blended |
    | `AttendeeCount` | Number |
    | `DurationHours` | Number |
@@ -91,7 +113,7 @@ Trainers stay inside the app and submissions land straight in a list P&C can sor
      "state": "WA",
      "trainer": "Jo Smith",
      "location": "Cannington",
-     "stream": "stores",
+     "businessArea": "stores",
      "format": "Face to face",
      "attendeeCount": "12",
      "durationHours": "3.5",

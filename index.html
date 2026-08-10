@@ -22,10 +22,10 @@
     <header class="masthead">
       <div>
         <div class="eyebrow">Cashies · People &amp; Capability</div>
-        <h1 class="headline">Training Calendar<br><span data-fy>FY</span></h1>
-        <p class="sub">Every piece of training running across the business, in one place. Filter by who it affects, how it is delivered, or which part of the business owns it.</p>
+        <h1 class="headline">Training Calendar</h1>
+        <p class="sub">Every piece of training running across the business, in one place. Pick a business area, then narrow by how it is delivered or what it covers.</p>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div class="masthead-actions">
         <button class="btn btn-ghost btn-sm" data-action="print">Print</button>
         <button class="btn" data-action="log">Log a Workshop</button>
       </div>
@@ -37,7 +37,9 @@
       <button class="tab" role="tab" data-view="pandc" aria-selected="false">People &amp; Capability</button>
     </nav>
 
-    <div class="kpis" id="kpis"></div>
+    <div class="period" id="period"></div>
+
+    <div class="areas" id="areas"></div>
 
     <div class="filters" id="filters"></div>
 
@@ -47,7 +49,7 @@
 
   <footer class="footer">
     <span>All for: 1</span>
-    <span>Cash Converters · People &amp; Capability · <span data-fy>FY</span></span>
+    <span>Cash Converters · People &amp; Capability</span>
   </footer>
 
   <div id="modal-root"></div>

@@ -14,17 +14,17 @@
    Scroll down to TRAINING and copy an existing block. Every item looks like:
 
      {
-       id:      "unique-id-here",       // any unique text, lowercase, no spaces
-       title:   "Assessing Essentials",  // what shows on the card
-       month:   "2026-08",               // YYYY-MM. Must be inside the FY below.
-       type:    "workshop",              // see TYPES list below
-       area:    "operations",            // see AREAS list below
-       streams: ["stores"],              // see STREAMS list below — can be many
-       status:  "confirmed",             // see STATUS list below
-       owner:   "P&C",                   // who runs it (free text)
-       audience:"Store Managers",        // who attends (free text)
-       summary: "One or two lines.",     // shows when the card is opened
-       link:    ""                       // optional URL, e.g. a CCLearn course
+       id:        "unique-id-here",      // any unique text, lowercase, no spaces
+       title:     "Assessing Essentials", // what shows on the card
+       month:     "2026-08",              // YYYY-MM
+       type:      "workshop",             // see TYPES list below
+       category:  "operations",           // see CATEGORIES list below
+       areas:     ["stores"],             // see BUSINESS AREAS below — can be many
+       status:    "confirmed",            // see STATUS list below
+       owner:     "P&C",                  // who runs it (shows in the detail panel)
+       audience:  "Store Managers",       // who attends (free text)
+       summary:   "One or two lines.",    // shows when the card is opened
+       resources: "https://…"             // link to the resources for this session
      },
 
    Only `id`, `title`, `month` and `type` are strictly required. Everything
@@ -37,13 +37,26 @@
    -----------------------------------------------------------------------------
    THE FIXED LISTS — use these exact values
    -----------------------------------------------------------------------------
-   TYPES    workshop | online | policy | webinar | activity
-   AREAS    whs | operations | leadership | compliance | ai | pandc
-   STREAMS  stores | ccpf | head-office
-   STATUS   confirmed | draft | proposed
+   TYPES           workshop | online | policy | webinar | activity
+   BUSINESS AREAS  stores | ccpf | head-office        (the `areas` field)
+   CATEGORIES      whs | operations | leadership | compliance | ai | pandc
+   STATUS          confirmed | draft | proposed
 
    `draft` and `proposed` items get a visible badge so nobody mistakes an idea
    for a locked-in date. Use `confirmed` only when the date is real.
+
+   -----------------------------------------------------------------------------
+   THE `resources` LINK
+   -----------------------------------------------------------------------------
+   Every item that is NOT an online module has a `resources` field — the place
+   trainers go for the facilitator guide, slides, handouts and activities.
+   Paste a SharePoint folder link, a Teams file link, or anything else.
+
+   Leave it as "" and the card shows a greyed-out "Resources to come" state, so
+   it is obvious at a glance which sessions still need their materials linked.
+
+   Online modules do not have one — the module itself is the resource, so use
+   the `link` field to point at the CCLearn course instead.
 
    -----------------------------------------------------------------------------
    WHERE THIS DATA CAME FROM
@@ -58,13 +71,13 @@
    ============================================================================= */
 
 /* -----------------------------------------------------------------------------
-   1. FINANCIAL YEAR
-   Change these two lines once a year to roll the calendar forward.
+   1. THE YEAR
+   The calendar can show either a financial year or a calendar year — there is
+   a toggle in the app. These settings control where it starts.
    -------------------------------------------------------------------------- */
 const FY = {
-  label: "FY26/27",
-  startMonth: "2026-07", // first month shown (July 2026)
-  months: 12,            // how many months to show
+  startYear: 2026,     // financial year starting July 2026 (i.e. FY26/27)
+  startMonth: 7,       // 7 = July. Change if the financial year ever moves.
 };
 
 /* -----------------------------------------------------------------------------
@@ -109,27 +122,29 @@ const WORKSHOP_LOG = {
    3. LABELS
    Change the wording here if you want different names on the filters.
    -------------------------------------------------------------------------- */
-const TYPES = {
-  workshop: { label: "Workshop",        short: "Workshop",  colour: "#ecb21f", desc: "Face-to-face, delivered by a trainer" },
-  online:   { label: "Online module",   short: "Online",    colour: "#85e3f4", desc: "Self-paced on CCLearn" },
-  policy:   { label: "Policy & compliance", short: "Policy", colour: "#b5a4d0", desc: "Policy sign-off or mandatory compliance" },
-  webinar:  { label: "Webinar",         short: "Webinar",   colour: "#e3eb7b", desc: "Live, delivered virtually" },
-  activity: { label: "Campaign & activity", short: "Activity", colour: "#ef9281", desc: "Drills, audits, awareness campaigns" },
+
+/* The big cards at the top of the page. */
+const BUSINESS_AREAS = {
+  "stores":      { label: "Stores",      short: "Stores",      blurb: "Store teams and managers" },
+  "ccpf":        { label: "CCPF",        short: "CCPF",        blurb: "Personal Finance" },
+  "head-office": { label: "Head Office", short: "Head Office", blurb: "Support and corporate" },
 };
 
-const AREAS = {
+const TYPES = {
+  workshop: { label: "Workshop",            short: "Workshop", colour: "#ecb21f", desc: "Face-to-face, delivered by a trainer" },
+  online:   { label: "Online module",       short: "Online",   colour: "#0a9fbd", desc: "Self-paced on CCLearn" },
+  policy:   { label: "Policy & compliance", short: "Policy",   colour: "#8b6fb8", desc: "Policy sign-off or mandatory compliance" },
+  webinar:  { label: "Webinar",             short: "Webinar",  colour: "#9aa32e", desc: "Live, delivered virtually" },
+  activity: { label: "Campaign & activity", short: "Activity", colour: "#e0674a", desc: "Drills, audits, awareness campaigns" },
+};
+
+const CATEGORIES = {
   whs:        { label: "Work Health & Safety" },
   operations: { label: "Product & Operations" },
   leadership: { label: "Leadership" },
   compliance: { label: "Compliance & Risk" },
   ai:         { label: "AI Enablement" },
   pandc:      { label: "People & Capability" },
-};
-
-const STREAMS = {
-  "stores":      { label: "Stores",      short: "Stores" },
-  "ccpf":        { label: "CCPF",        short: "CCPF" },
-  "head-office": { label: "Head Office", short: "Head Office" },
 };
 
 const STATUSES = {
@@ -146,20 +161,21 @@ const TRAINING = [
 
   /* ==== WORK HEALTH & SAFETY ==============================================
      From the WHS tab of the draft planner. WHS training applies right across
-     the business, so these are tagged to all three streams. If something is
-     genuinely stores-only, trim the `streams` list on that item.            */
+     the business, so these are tagged to all three areas. If something is
+     genuinely stores-only, trim the `areas` list on that item.             */
 
   {
     id: "whs-bullying-harassment",
     title: "Bullying and Harassment",
     month: "2026-08",
     type: "policy",
-    area: "whs",
-    streams: ["stores", "ccpf", "head-office"],
+    category: "whs",
+    areas: ["stores", "ccpf", "head-office"],
     status: "draft",
     owner: "WHS",
     audience: "All team members",
     summary: "Annual bullying and harassment refresher and policy sign-off.",
+    resources: "",
     source: "planner",
   },
   {
@@ -167,12 +183,13 @@ const TRAINING = [
     title: "Safety Month",
     month: "2026-10",
     type: "activity",
-    area: "whs",
-    streams: ["stores", "ccpf", "head-office"],
+    category: "whs",
+    areas: ["stores", "ccpf", "head-office"],
     status: "draft",
     owner: "WHS",
     audience: "All team members",
     summary: "National Safe Work Month campaign. Anchors the October WHS block below.",
+    resources: "",
     source: "planner",
   },
   {
@@ -180,12 +197,13 @@ const TRAINING = [
     title: "Test and Tag Training",
     month: "2026-10",
     type: "workshop",
-    area: "whs",
-    streams: ["stores", "head-office"],
+    category: "whs",
+    areas: ["stores", "head-office"],
     status: "draft",
     owner: "WHS",
     audience: "Nominated site testers",
     summary: "Practical training for team members responsible for electrical test and tag.",
+    resources: "",
     source: "planner",
   },
   {
@@ -193,12 +211,13 @@ const TRAINING = [
     title: "Emergency Management (Managers)",
     month: "2026-10",
     type: "online",
-    area: "whs",
-    streams: ["stores", "ccpf", "head-office"],
+    category: "whs",
+    areas: ["stores", "ccpf", "head-office"],
     status: "draft",
     owner: "WHS",
     audience: "Managers only",
     summary: "Manager-level emergency management module. Part of the Safety Month block.",
+    link: "",
     source: "planner",
   },
   {
@@ -206,12 +225,13 @@ const TRAINING = [
     title: "Theft by Force",
     month: "2026-10",
     type: "online",
-    area: "whs",
-    streams: ["stores"],
+    category: "whs",
+    areas: ["stores"],
     status: "draft",
     owner: "WHS",
     audience: "All store team members",
     summary: "How to stay safe during an armed or forceful theft, and what to do afterwards.",
+    link: "",
     source: "planner",
   },
   {
@@ -219,12 +239,13 @@ const TRAINING = [
     title: "Evacuation Drill",
     month: "2026-10",
     type: "activity",
-    area: "whs",
-    streams: ["stores", "ccpf", "head-office"],
+    category: "whs",
+    areas: ["stores", "ccpf", "head-office"],
     status: "draft",
     owner: "WHS",
     audience: "Every site",
     summary: "Site-by-site evacuation drill, recorded against each location.",
+    resources: "",
     source: "planner",
   },
   {
@@ -232,12 +253,13 @@ const TRAINING = [
     title: "Sign Off Audit",
     month: "2026-10",
     type: "activity",
-    area: "compliance",
-    streams: ["stores", "ccpf", "head-office"],
+    category: "compliance",
+    areas: ["stores", "ccpf", "head-office"],
     status: "draft",
     owner: "WHS",
     audience: "All sites",
     summary: "Audit of WHS module completions and policy sign-offs for the year to date.",
+    resources: "",
     source: "planner",
   },
   {
@@ -245,12 +267,13 @@ const TRAINING = [
     title: "Bomb Threats",
     month: "2026-11",
     type: "online",
-    area: "whs",
-    streams: ["stores", "ccpf", "head-office"],
+    category: "whs",
+    areas: ["stores", "ccpf", "head-office"],
     status: "draft",
     owner: "WHS",
     audience: "All team members",
     summary: "Recognising and responding to a bomb threat.",
+    link: "",
     source: "planner",
   },
   {
@@ -258,12 +281,13 @@ const TRAINING = [
     title: "Lockdown",
     month: "2027-02",
     type: "online",
-    area: "whs",
-    streams: ["stores", "ccpf", "head-office"],
+    category: "whs",
+    areas: ["stores", "ccpf", "head-office"],
     status: "draft",
     owner: "WHS",
     audience: "All team members",
     summary: "Lockdown procedure — when to call it and how to run it.",
+    link: "",
     source: "planner",
   },
   {
@@ -271,12 +295,13 @@ const TRAINING = [
     title: "Violence and Aggression",
     month: "2027-03",
     type: "online",
-    area: "whs",
-    streams: ["stores", "ccpf", "head-office"],
+    category: "whs",
+    areas: ["stores", "ccpf", "head-office"],
     status: "draft",
     owner: "WHS",
     audience: "All team members",
     summary: "De-escalating aggressive customer behaviour and reporting incidents.",
+    link: "",
     source: "planner",
   },
   {
@@ -284,12 +309,13 @@ const TRAINING = [
     title: "Injury Management",
     month: "2027-04",
     type: "online",
-    area: "whs",
-    streams: ["stores", "ccpf", "head-office"],
+    category: "whs",
+    areas: ["stores", "ccpf", "head-office"],
     status: "draft",
     owner: "WHS",
     audience: "All team members",
     summary: "Reporting an injury, and the return-to-work process.",
+    link: "",
     source: "planner",
   },
   {
@@ -297,12 +323,13 @@ const TRAINING = [
     title: "Harassment",
     month: "2027-06",
     type: "policy",
-    area: "whs",
-    streams: ["stores", "ccpf", "head-office"],
+    category: "whs",
+    areas: ["stores", "ccpf", "head-office"],
     status: "draft",
     owner: "WHS",
     audience: "All team members",
     summary: "End-of-year harassment refresher. Note: overlaps with the August Bullying and Harassment module — worth confirming whether both are needed.",
+    resources: "",
     source: "planner",
   },
 
@@ -314,12 +341,13 @@ const TRAINING = [
     title: "AI Training and Community",
     month: "2026-08",
     type: "workshop",
-    area: "ai",
-    streams: ["stores", "head-office"],
+    category: "ai",
+    areas: ["stores", "head-office"],
     status: "draft",
     owner: "People & Capability",
     audience: "All team members",
     summary: "All For: 1 AI enablement — capability profile, training and the ongoing community of practice.",
+    resources: "",
     source: "planner",
   },
   {
@@ -327,12 +355,13 @@ const TRAINING = [
     title: "Leadership Starts",
     month: "2026-09",
     type: "workshop",
-    area: "leadership",
-    streams: ["stores"],
+    category: "leadership",
+    areas: ["stores"],
     status: "draft",
     owner: "People & Capability",
     audience: "Store Managers and 2ICs",
     summary: "Leadership development programme kicks off.",
+    resources: "",
     source: "planner",
   },
   {
@@ -340,12 +369,13 @@ const TRAINING = [
     title: "Jewellery",
     month: "2026-11",
     type: "workshop",
-    area: "operations",
-    streams: ["stores"],
+    category: "operations",
+    areas: ["stores"],
     status: "draft",
     owner: "People & Capability",
     audience: "Store team members",
     summary: "Jewellery product knowledge, valuation and merchandising.",
+    resources: "",
     source: "planner",
   },
   {
@@ -353,12 +383,13 @@ const TRAINING = [
     title: "Retail",
     month: "2026-11",
     type: "workshop",
-    area: "operations",
-    streams: ["stores"],
+    category: "operations",
+    areas: ["stores"],
     status: "draft",
     owner: "People & Capability",
     audience: "Store team members",
     summary: "Core retail skills — floor standards, customer experience and selling.",
+    resources: "",
     source: "planner",
   },
   {
@@ -366,12 +397,13 @@ const TRAINING = [
     title: "Pawnbroking",
     month: "2027-02",
     type: "workshop",
-    area: "operations",
-    streams: ["stores"],
+    category: "operations",
+    areas: ["stores"],
     status: "draft",
     owner: "People & Capability",
     audience: "Store team members",
     summary: "Pawnbroking fundamentals — loans, redemptions and compliance.",
+    resources: "",
     source: "planner",
   },
   {
@@ -379,12 +411,13 @@ const TRAINING = [
     title: "Webshop — Best Practice",
     month: "2027-03",
     type: "webinar",
-    area: "operations",
-    streams: ["stores"],
+    category: "operations",
+    areas: ["stores"],
     status: "proposed",
     owner: "People & Capability",
     audience: "Store team members",
     summary: "Webshop best practice. Planner has this pencilled in as an online webinar — format still to be confirmed.",
+    resources: "",
     source: "planner",
   },
   {
@@ -392,12 +425,13 @@ const TRAINING = [
     title: "Lux",
     month: "2027-04",
     type: "workshop",
-    area: "operations",
-    streams: ["stores"],
+    category: "operations",
+    areas: ["stores"],
     status: "draft",
     owner: "People & Capability",
     audience: "Store team members",
     summary: "Luxury goods — identification, authentication and pricing.",
+    resources: "",
     source: "planner",
   },
   {
@@ -405,12 +439,13 @@ const TRAINING = [
     title: "Personal Finance Workshops",
     month: "2027-06",
     type: "workshop",
-    area: "operations",
-    streams: ["stores"],
+    category: "operations",
+    areas: ["stores"],
     status: "proposed",
     owner: "People & Capability",
     audience: "Store team members",
     summary: "Personal finance workshops for store teams. Marked with a question mark in the planner — not yet committed.",
+    resources: "",
     source: "planner",
   },
 
@@ -424,12 +459,13 @@ const TRAINING = [
     title: "CCPF: Assessing Essential Skills",
     months: ["2026-08", "2026-09", "2026-10", "2026-11"],
     type: "workshop",
-    area: "operations",
-    streams: ["ccpf"],
+    category: "operations",
+    areas: ["ccpf"],
     status: "draft",
     owner: "CCPF",
     audience: "CCPF assessors",
     summary: "Rolling assessing capability programme, running monthly from August through November.",
+    resources: "",
     source: "planner",
   },
   {
@@ -437,18 +473,19 @@ const TRAINING = [
     title: "Collections: Hardship and Vulnerability",
     month: "2026-10",
     type: "workshop",
-    area: "compliance",
-    streams: ["ccpf"],
+    category: "compliance",
+    areas: ["ccpf"],
     status: "draft",
     owner: "CCPF",
     audience: "Collections team",
     summary: "Identifying and supporting customers in hardship or vulnerable circumstances.",
+    resources: "",
     source: "planner",
   },
 
   /* ==== HEAD OFFICE =====================================================
      PLACEHOLDERS — none of this came from the spreadsheet. Seeded so the
-     Head Office filter has something in it and you can see the shape.
+     Head Office view has something in it and you can see the shape.
      Replace with real dates and delete anything that does not apply.      */
 
   {
@@ -456,12 +493,13 @@ const TRAINING = [
     title: "New Financial Year Compliance Refresh",
     month: "2026-07",
     type: "policy",
-    area: "compliance",
-    streams: ["head-office"],
+    category: "compliance",
+    areas: ["head-office"],
     status: "draft",
     owner: "Risk & Compliance",
     audience: "All Head Office",
     summary: "Annual code of conduct, privacy and AML/CTF sign-off at the start of the financial year.",
+    resources: "",
     source: "placeholder",
   },
   {
@@ -469,12 +507,13 @@ const TRAINING = [
     title: "Cyber Security Awareness",
     month: "2026-11",
     type: "online",
-    area: "compliance",
-    streams: ["head-office", "stores", "ccpf"],
+    category: "compliance",
+    areas: ["head-office", "stores", "ccpf"],
     status: "draft",
     owner: "Technology",
     audience: "All team members",
     summary: "Annual cyber awareness module and phishing simulation.",
+    link: "",
     source: "placeholder",
   },
   {
@@ -482,12 +521,13 @@ const TRAINING = [
     title: "Performance Conversations for Managers",
     month: "2027-01",
     type: "workshop",
-    area: "leadership",
-    streams: ["head-office", "stores", "ccpf"],
+    category: "leadership",
+    areas: ["head-office", "stores", "ccpf"],
     status: "draft",
     owner: "People & Capability",
     audience: "People leaders",
     summary: "Practical skills for the mid-year performance conversation cycle.",
+    resources: "",
     source: "placeholder",
   },
   {
@@ -495,12 +535,13 @@ const TRAINING = [
     title: "Psychosocial Hazards for Leaders",
     month: "2027-05",
     type: "webinar",
-    area: "whs",
-    streams: ["head-office", "stores", "ccpf"],
+    category: "whs",
+    areas: ["head-office", "stores", "ccpf"],
     status: "draft",
     owner: "WHS",
     audience: "People leaders",
     summary: "Leader obligations around psychosocial hazards and how to spot early warning signs.",
+    resources: "",
     source: "placeholder",
   },
 ];
@@ -523,6 +564,7 @@ const PANDC_YEAR = [
     kind: "cycle",
     owner: "People & Capability",
     summary: "New financial year goals set across the business, including individual development goals.",
+    resources: "",
     source: "placeholder",
   },
   {
@@ -532,6 +574,7 @@ const PANDC_YEAR = [
     kind: "feedback",
     owner: "People & Capability",
     summary: "30/60/90 day check-in survey for new starters. Runs continuously, reported quarterly.",
+    resources: "",
     source: "placeholder",
   },
   {
@@ -541,6 +584,7 @@ const PANDC_YEAR = [
     kind: "feedback",
     owner: "People & Capability",
     summary: "Whole-of-business engagement survey. The largest feedback moment in the year.",
+    resources: "",
     source: "placeholder",
   },
   {
@@ -550,6 +594,7 @@ const PANDC_YEAR = [
     kind: "cycle",
     owner: "People & Capability",
     summary: "Results shared back to the business, with team-level action plans built off them.",
+    resources: "",
     source: "placeholder",
   },
   {
@@ -559,6 +604,7 @@ const PANDC_YEAR = [
     kind: "feedback",
     owner: "People & Capability",
     summary: "Short pulse survey to test whether engagement actions are landing.",
+    resources: "",
     source: "placeholder",
   },
   {
@@ -568,6 +614,7 @@ const PANDC_YEAR = [
     kind: "feedback",
     owner: "People & Capability",
     summary: "Post-peak feedback from stores on resourcing, training readiness and support.",
+    resources: "",
     source: "placeholder",
   },
   {
@@ -577,6 +624,7 @@ const PANDC_YEAR = [
     kind: "cycle",
     owner: "People & Capability",
     summary: "Formal mid-year check-in against goals and development plans.",
+    resources: "",
     source: "placeholder",
   },
   {
@@ -586,6 +634,7 @@ const PANDC_YEAR = [
     kind: "feedback",
     owner: "People & Capability",
     summary: "Second pulse survey of the year.",
+    resources: "",
     source: "placeholder",
   },
   {
@@ -595,6 +644,7 @@ const PANDC_YEAR = [
     kind: "feedback",
     owner: "People & Capability",
     summary: "Review of post-workshop evaluation and CCLearn feedback across the year to date.",
+    resources: "",
     source: "placeholder",
   },
   {
@@ -604,6 +654,7 @@ const PANDC_YEAR = [
     kind: "feedback",
     owner: "People & Capability",
     summary: "360 feedback for people leaders, feeding into development planning.",
+    resources: "",
     source: "placeholder",
   },
   {
@@ -613,6 +664,7 @@ const PANDC_YEAR = [
     kind: "feedback",
     owner: "People & Capability",
     summary: "Final pulse of the year ahead of the end-of-year cycle.",
+    resources: "",
     source: "placeholder",
   },
   {
@@ -622,6 +674,7 @@ const PANDC_YEAR = [
     kind: "cycle",
     owner: "People & Capability",
     summary: "Business-wide training needs analysis that builds next year's calendar.",
+    resources: "",
     source: "placeholder",
   },
 ];
