@@ -11,6 +11,7 @@ Built as a plain static site. No build step, no server, no backend, no dependenc
 - **Department colours** taken straight from the Policy Resign Calendar spreadsheet. The colour on each card is its department, and nothing else uses colour, so it means one thing only.
 - **Blackout months** — July and December are drawn hatched and greyed. If something is scheduled into one anyway, the card carries a warning.
 - **Parked** — anything with no date agreed is listed under the calendar so it is not forgotten.
+- **No status field.** Everything on the calendar is treated the same. Where a date or format is genuinely unsettled, that is said in the item's own summary rather than as a badge.
 - **This month** filter, which also jumps the calendar to the right year if you are looking at a different one.
 - **Resources link** on every card except online modules, where the module itself is the resource.
 
@@ -32,7 +33,6 @@ A training item looks like this:
   type:       "workshop",           // workshop | online | policy | webinar | activity
   department: "operations",         // sets the card colour — see list below
   areas:      ["stores"],           // stores | ccpf | head-office — can be several
-  status:     "draft",              // confirmed | draft | proposed | parked
   audience:   "Store team members",
   summary:    "Jewellery product knowledge, valuation and merchandising.",
   resources:  ""                    // link to slides, guides, handouts
@@ -54,7 +54,7 @@ months: ["2026-08", "2026-09", "2026-10", "2026-11"],
 
 The item then appears in every month listed and is badged **Recurring**.
 
-**No date yet?** Set `status: "parked"` and leave the month off. It appears in the Parked block under the calendar.
+**No date yet?** Just leave the month off. It appears in the Parked block under the calendar, badged *No date yet*.
 
 **Rolling to a new year?** The app can already show any year via the toggle and dropdown — the `FY` block at the top of the data file only sets which year it opens on.
 
@@ -101,11 +101,13 @@ Two spreadsheets, merged. Every item carries a `source` field so you can tell th
 
 | `source` | Document |
 |---|---|
-| `policy-calendar` | 2026 Policy Resign Calendar — the colour-coded "2026" tab, plus its Online Modules and Campaigns_Workshops tabs |
+| `policy-calendar` | The policy resign calendar — titles, business areas, departments, dates and overview text taken from it directly, plus its Online Modules and Campaigns_Workshops tabs |
 | `planner` | Draft Annual Planner (Jul 26 – Jun 27) — the WHS / Stores / CCPF tabs |
 | `placeholder` | Seeded examples so the Head Office view is not empty. Flagged in the app. Replace them. |
 
-Everything is marked `status: "draft"` because neither source is locked in. Move items to `"confirmed"` as dates firm up and the DRAFT badge disappears.
+The 24 policy resigns run **August 2026 through May 2027** — they are aligned to the financial year, not the calendar year. Their summaries are the spreadsheet's own Overview wording.
+
+All of them are delivered as **eLearning**, which shows as *Delivered via: eLearning* in the detail panel. They stay under the **Policy resigns** delivery filter rather than being folded in with Online modules, so the filter you asked for keeps working — the `format` field carries the eLearning fact separately.
 
 ### Where the two documents disagree
 
@@ -121,18 +123,21 @@ Two other things to look at:
 
 - **Bullying and Harassment** appears in both documents for August 2026. It is entered **once**, as a People & Culture policy resign.
 - The planner also has a separate **Harassment** refresher in June 2027, which overlaps with the August resign. Worth confirming whether both are needed.
+- The three October safety policies (Corporate Store Operations WHS Policy, Fires/Evacuation, Fitness for Work) sit under **Operations**, which the updated calendar's Category column confirms — earlier there was a question over whether they belonged to WHS.
 
 ### What was not imported
 
+- **Intro to the Privacy Act**, which the earlier calendar had flagged to merge with the Privacy Policy. The updated calendar has only Privacy Policy, so that is all that is here.
 - Anything in the policy calendar dated **Jul–Dec 2025** — before this calendar starts.
 - The **December induction modules** (Privacy Induction, Induction: Leave Policy, WHS Induction). December is a blackout month and these read as always-on induction rather than scheduled training. Add them if you want them visible.
 - The **Survey Schedule** tab. The People & Capability view that would have used it has been removed.
+- The placeholder **New Financial Year Compliance Refresh** was dropped, because the real AML/CTF and conduct resigns now cover it.
 - Policy **owners** (Kan, Julie, Sascha and so on) are in the spreadsheet but are not displayed — owner was removed from the app.
 
 ### Other things worth knowing
 
 - **WHS training is tagged to all three business areas**, because health and safety applies right across the business. That makes Stores show most of the calendar. If some modules are genuinely store-only, trim the `areas` list on those items and the filters will sharpen up.
-- The three October WHS-flavoured policies (WHS Policy, Fires/Evacuation, Fitness for Work) are coloured **Operations**, following the spreadsheet, even though the topic is safety. Change `department` on those three if they should sit with WHS.
+- Because the resigns moved to the financial year, only three items now fall outside FY26/27 — the March and April 2026 Theft by Force campaign and workshop, and Collections: Selling the Benefits in May 2026. Switch to **Calendar year 2026** to see them.
 
 ---
 

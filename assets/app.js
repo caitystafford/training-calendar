@@ -113,7 +113,8 @@
     return item.month ? [item.month] : [];
   }
 
-  function isParked(item) { return item.status === "parked" || !itemMonths(item).length; }
+  /* Anything with no month agreed yet. */
+  function isParked(item) { return !itemMonths(item).length; }
 
   /* --- Filtering ---------------------------------------------------------- */
   /* `skip` lets us compute facet counts by ignoring one dimension at a time. */
@@ -171,9 +172,8 @@
       .join("");
   }
 
-  function statusTag(item) {
-    if (!item.status || item.status === "confirmed") return "";
-    return `<span class="tag tag-status">${esc((STATUSES[item.status] || {}).label || item.status)}</span>`;
+  function parkedTag(item) {
+    return isParked(item) ? `<span class="tag tag-status">No date yet</span>` : "";
   }
 
   function recurringTag(item) {
@@ -199,7 +199,7 @@
       <div class="item" data-id="${esc(item.id)}" role="button" tabindex="0"
            style="border-left-color:${deptOf(item).colour}">
         <div class="item-title">${esc(item.title)}</div>
-        <div class="item-meta">${deptTag(item)}${typeTag(item)}${areaTags(item)}${recurringTag(item)}${statusTag(item)}${resourceLink(item)}</div>
+        <div class="item-meta">${deptTag(item)}${typeTag(item)}${areaTags(item)}${recurringTag(item)}${parkedTag(item)}${resourceLink(item)}</div>
       </div>`;
   }
 
@@ -266,7 +266,7 @@
       const rows = inMonth.map((i) => `
         <div class="row" data-id="${esc(i.id)}" role="button" tabindex="0"
              style="border-left-color:${deptOf(i).colour}">
-          <div class="r-tags">${deptTag(i)}${typeTag(i)}${areaTags(i)}${recurringTag(i)}${statusTag(i)}</div>
+          <div class="r-tags">${deptTag(i)}${typeTag(i)}${areaTags(i)}${recurringTag(i)}${parkedTag(i)}</div>
           <div>
             <div class="r-title">${esc(i.title)}</div>
             ${i.summary ? `<div class="r-sum">${esc(i.summary)}</div>` : ""}
@@ -423,18 +423,19 @@
     const cells = [
       ["When", months || "No date yet"],
       ["Delivery", (TYPES[item.type] || {}).label],
+      ["Delivered via", item.format],
       ["Department", d.label],
       ["Business area", (item.areas || []).map((a) => (BUSINESS_AREAS[a] || { label: a }).label).join(", ")],
       ["Audience", item.audience],
-      ["Status", (STATUSES[item.status] || {}).label],
     ].filter(([, v]) => v).map(([k, v]) => `
       <div class="detail-cell"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join("");
 
     const notes = [];
     if (item.source === "placeholder") {
       notes.push(`<b>Placeholder.</b> Seeded as an example — it did not come from either spreadsheet. Replace it with the real detail in <code>data/training-data.js</code>.`);
-    } else if (item.status && item.status !== "confirmed") {
-      notes.push(`<b>${esc((STATUSES[item.status] || {}).label)}.</b> Dates and detail are not locked in yet.`);
+    }
+    if (isParked(item)) {
+      notes.push(`<b>No date yet.</b> Add a <code>month</code> in <code>data/training-data.js</code> and it will move into the calendar.`);
     }
     if (itemMonths(item).some(isBlackout)) {
       notes.push(`<b>Blackout month.</b> This falls in ${BLACKOUT_MONTHS.map((m) => MONTH_NAMES[m - 1]).join(" or ")}, when we do not normally schedule training.`);
