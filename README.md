@@ -6,18 +6,18 @@ Built as a plain static site. No build step, no server, no backend, no dependenc
 
 ## What's on the page
 
-**Calendar** is twelve collapsed month rows — the whole year fits on one screen without scrolling. Each row says what is in that month in plain English ("3 policy resigns · 1 workshop"); click to expand it. The current month opens on load, and *Expand all* / *Collapse all* are there when you want everything at once.
+**Calendar** is a twelve-cell grid, three across, so each row of the grid is a quarter of the financial year. Every cell is exactly the same height — a cell lists its first five items, then *+N more*. Clicking a month, or *+N more*, opens the whole month in a panel; clicking an item goes straight to its detail. Closing an item takes you back to the month you opened it from.
 
 **List** is the same training as one flat run in date order, with the summaries showing, for when you want to read rather than navigate.
 
 - **Business area cards** — All / Stores / CCPF / Head Office. One click, whole calendar reframes.
 - **Financial year ⇄ calendar year toggle**, with a year dropdown and arrows. The counter tells you how many items fall outside the year you are looking at.
-- **One dot of colour per row**, which is the department. Nothing else in the calendar is coloured, so the colour means exactly one thing — and the department is named in words alongside it, so the dot never has to be decoded.
-- **Blackout months** — July and December read as greyed rows with a Blackout badge and no expand arrow. If something is scheduled into one anyway, the month expands and carries a warning.
-- **Parked** — anything with no date agreed is its own row at the bottom so it is not forgotten.
+- **One dot of colour per item**, which is the department, keyed in the legend at the foot of the page. Nothing else in the calendar is coloured, so the colour means exactly one thing.
+- **Blackout months** — July and December are greyed, dashed and badged, and are not clickable when empty. If something is scheduled into one anyway, the month opens and carries a warning.
+- **Parked** — anything with no date agreed sits in its own list below the grid so it is not forgotten.
 - **No status field.** Everything on the calendar is treated the same. Where a date or format is genuinely unsettled, that is said in the item's own summary rather than as a badge.
 - **This month** filter, which also jumps the calendar to the right year if you are looking at a different one.
-- **Resources link** on every row except online modules, where the module itself is the resource.
+- **Resources link** on every item except online modules, where the module itself is the resource. Grid cells are titles only; the link is in the month panel and the detail panel.
 
 ---
 
@@ -48,7 +48,7 @@ Only `id`, `title`, `month` and `type` are required.
 Two fields are easy to mix up:
 
 - **`areas`** is the *business area* — who it affects. Stores, CCPF, Head Office. These are the big cards at the top.
-- **`department`** is *who owns it* — People & Culture, IT, Marketing, Operations, WHS, Finance, Risk & Compliance, Leadership. This sets the colour of the card.
+- **`department`** is *who owns it* — People & Culture, IT, Marketing, Operations, WHS, Finance, Risk & Compliance, Leadership. This sets the colour of the item's dot.
 
 **Runs across several months?** Swap `month` for `months`:
 
@@ -58,7 +58,7 @@ months: ["2026-08", "2026-09", "2026-10", "2026-11"],
 
 The item then appears in every month listed and is badged **Recurring**.
 
-**No date yet?** Just leave the month off. It appears in the Parked block under the calendar, badged *No date yet*.
+**No date yet?** Just leave the month off. It appears in the Parked list below the grid.
 
 **Rolling to a new year?** The app can already show any year via the toggle and dropdown — the `FY` block at the top of the data file only sets which year it opens on.
 
@@ -66,7 +66,7 @@ Save the file, refresh the browser. That is the whole update process.
 
 ### Departments and colours
 
-Each row carries one small dot in its department colour, with the department named next to it. Colours come from the colour coding in the policy resign calendar. Change one in the `DEPARTMENTS` block and it changes everywhere.
+Each item carries one small dot in its department colour, keyed in the legend at the foot of the page and named in full in the month and detail panels. Colours come from the colour coding in the policy resign calendar. Change one in the `DEPARTMENTS` block and it changes everywhere.
 
 | Department | Key | Colour |
 |---|---|---|
@@ -87,7 +87,7 @@ Peach, lilac, yellow and red are the spreadsheet's own colours. Lime for Finance
 const BLACKOUT_MONTHS = [7, 12];   // July and December
 ```
 
-Change that line to move them. Blackout months are greyed, badged, not expandable, and read *No training scheduled*. If an item is scheduled into one, the month becomes expandable and carries a warning, and the item's detail panel says so too.
+Change that line to move them. Blackout months are greyed, dashed, badged and read *No training scheduled*. If an item is scheduled into one, the month becomes clickable and carries a warning, and the item's detail panel says so too.
 
 ### Resources links
 
@@ -274,6 +274,6 @@ assets/app.js              Filtering and rendering. No content in here.
 ## Notes
 
 - **Fonts.** Archivo loads from Google Fonts. If the network blocks that, the page falls back to Helvetica/Arial and still looks fine — but if you are hosting somewhere without outbound internet, download Archivo and self-host it in `assets/`.
-- **Print.** The Print button prints **every** month expanded, whichever ones happen to be open on screen — collapsed months stay in the page and are only hidden with CSS, so find-in-page reaches them too. Filters apply, so you can print just the Stores view.
-- **Accessibility.** Keyboard navigable throughout, `Esc` closes any dialog, and `prefers-reduced-motion` is respected. Month rows are real buttons carrying `aria-expanded`. Department colour is never the only signal — the department is always named in the row.
+- **Print.** The Print button prints every month in full, including the items behind *+N more* — the overflow stays in the page and is only hidden with CSS, so find-in-page reaches it too. Filters apply, so you can print just the Stores view.
+- **Accessibility.** Keyboard navigable throughout, `Esc` closes any dialog, and `prefers-reduced-motion` is respected. Month headers and items are real buttons. Department colour is never the only signal — the department is named in the legend, the month panel and the detail panel, and every grid dot carries the title as a tooltip.
 - **Browsers.** Anything current. No IE support and no polyfills.

@@ -15,7 +15,7 @@
     types: new Set(),           // empty = all
     departments: new Set(),     // empty = all
     thisMonth: false,           // restrict to the current calendar month
-    expanded: new Set(),        // which month rows are open
+    openMonth: null,            // month key whose panel is open
     search: "",
     periodMode: "fy",           // fy | cy
     periodYear: FY.startYear,   // year the visible window starts in
@@ -189,21 +189,26 @@
     return `<span class="res-link is-empty">Resources to come</span>`;
   }
 
-  /* One line of training. Same row shape everywhere in the app. */
-  function trainingRow(item, opts) {
-    const showDate = opts && opts.showDate;
+  /* One row of training — used in the month panel and the Parked block. */
+  function compactRow(item, showWhen) {
     const when = itemMonths(item).map((m) => {
       const l = monthLabel(m);
       return l.name.slice(0, 3) + " " + String(l.year).slice(2);
     }).join(", ");
 
     return `
-      <div class="t-row" data-id="${esc(item.id)}" role="button" tabindex="0">
-        ${deptDot(item)}
-        <span class="t-title">${esc(item.title)}</span>
-        ${showDate ? `<span class="t-when">${esc(when || "No date")}</span>` : ""}
-        <span class="t-meta">${esc(metaLine(item))}</span>
-        <span class="t-res">${resourceLink(item)}</span>
+      <div class="l-row" data-id="${esc(item.id)}" role="button" tabindex="0">
+        <div class="l-main">
+          ${deptDot(item)}
+          <div>
+            <div class="t-title">${esc(item.title)}</div>
+            <div class="t-meta">${esc(metaLine(item))}</div>
+          </div>
+        </div>
+        <div class="l-side">
+          ${showWhen ? `<span class="t-when">${esc(when)}</span>` : ""}
+          ${resourceLink(item)}
+        </div>
       </div>`;
   }
 
@@ -226,56 +231,82 @@
   }
 
   /* --- Views -------------------------------------------------------------- */
-  /* The main view is twelve collapsed rows. You see the whole year without
-     scrolling, then open only the month you care about. */
+  /* A real calendar grid — three columns, so each row of the grid is a
+     quarter of the financial year. Every cell is exactly the same height,
+     which is what keeps the page tidy: a cell shows the first few items and
+     then "+N more", which opens the whole month in a panel. */
+  var CELL_ITEMS = 5;
+
   function renderCalendar(items) {
-    const months = periodMonths();
     const now = currentMonthKey();
 
-    const rows = months.map((key) => {
+    const cells = periodMonths().map((key, idx) => {
       const label = monthLabel(key);
       const inMonth = items.filter((i) => itemMonths(i).includes(key));
       const blackout = isBlackout(key);
       const isCurrent = key === now;
-      const open = state.expanded.has(key);
-      const canOpen = inMonth.length > 0;
 
-      let summary;
-      if (blackout && !inMonth.length) summary = "No training scheduled";
-      else if (!inMonth.length) summary = anyFilterActive() ? "Nothing matching" : "Nothing scheduled";
-      else summary = esc(typeSummary(inMonth));
+      const hidden = Math.max(0, inMonth.length - CELL_ITEMS);
 
-      // Always in the DOM, hidden with CSS, so Print can show every month
-      // regardless of what happens to be expanded on screen.
-      const body = inMonth.length ? `
-        <div class="m-body">
-          ${blackout ? '<div class="blackout-warn">Scheduled during a blackout month</div>' : ""}
-          ${inMonth.map((i) => trainingRow(i)).join("")}
-        </div>` : "";
+      let body;
+      if (inMonth.length) {
+        // Every item is rendered; the overflow is hidden with CSS rather than
+        // left out, so Print and find-in-page still see the whole month.
+        body = inMonth.map((i, n) => `
+          <div class="mc-item${n >= CELL_ITEMS ? " is-over" : ""}" data-id="${esc(i.id)}"
+               role="button" tabindex="${n >= CELL_ITEMS ? -1 : 0}" title="${esc(i.title)}">
+            ${deptDot(i)}<span class="mc-title">${esc(i.title)}</span>
+          </div>`).join("") +
+          (hidden > 0
+            ? `<button class="mc-more" data-month="${esc(key)}">+${hidden} more</button>`
+            : "");
+      } else {
+        body = `<div class="mc-empty">${blackout ? "No training scheduled"
+          : anyFilterActive() ? "Nothing matching" : "Nothing scheduled"}</div>`;
+      }
 
       return `
-        <div class="m-row${open ? " is-open" : ""}${isCurrent ? " is-current" : ""}${!canOpen ? " is-empty" : ""}${key < now ? " is-past" : ""}">
-          <button class="m-head" data-month="${esc(key)}" aria-expanded="${open}" ${canOpen ? "" : "disabled"}>
-            <span class="m-chev" aria-hidden="true"></span>
-            <span class="m-name">${esc(label.name)}<span class="m-yr">${label.year}</span>${
-              isCurrent ? '<span class="now-tag">This month</span>' : ""}${
-              blackout ? '<span class="blackout-tag">Blackout</span>' : ""}</span>
-            <span class="m-sum">${summary}</span>
-            <span class="m-count">${inMonth.length || ""}</span>
-          </button>
-          ${body}
-        </div>`;
+        <section class="mc${isCurrent ? " is-current" : ""}${blackout ? " is-blackout" : ""}${key < now ? " is-past" : ""}"
+                 style="animation-delay:${idx * 18}ms">
+          <${inMonth.length ? `button class="mc-head" data-month="${esc(key)}"` : "div class=\"mc-head is-static\""}>
+            <span class="mc-when">
+              <span class="mc-name">${esc(label.name)}</span>
+              <span class="mc-yr">${label.year}</span>
+            </span>
+            ${isCurrent ? '<span class="now-tag">Now</span>'
+              : blackout ? '<span class="blackout-tag">Blackout</span>'
+              : `<span class="mc-count">${inMonth.length}</span>`}
+          </${inMonth.length ? "button" : "div"}>
+          <div class="mc-list">${body}</div>
+        </section>`;
     }).join("");
 
     return `
       <div class="year-bar">
         <div class="year-total">${items.filter((i) => !isParked(i)).length} scheduled across ${esc(periodLabel())}</div>
-        <div class="year-actions">
-          <button class="link-btn" data-action="expand-all">Expand all</button>
-          <button class="link-btn" data-action="collapse-all">Collapse all</button>
-        </div>
+        <div class="year-hint">Click a month to see everything in it</div>
       </div>
-      <div class="months">${rows}</div>` + parked(items);
+      <div class="cal-grid">${cells}</div>` + parked(items) + legend();
+  }
+
+  /* Every item in one month, opened from a cell. */
+  function renderMonthPanel(key) {
+    const l = monthLabel(key);
+    const inMonth = filtered().filter((i) => itemMonths(i).includes(key));
+    return `
+      <div class="overlay" data-close="1">
+        <div class="panel panel-wide" role="dialog" aria-modal="true" aria-label="${esc(l.name)} ${l.year}" tabindex="-1">
+          <div class="panel-head" style="background:${"#150721"}">
+            <div class="p-eyebrow" style="color:rgba(255,255,255,0.7)">${esc(periodLabel())} &middot; ${inMonth.length} item${inMonth.length === 1 ? "" : "s"}</div>
+            <h2 style="color:#fff">${esc(l.name)} ${l.year}</h2>
+          </div>
+          <div class="panel-body">
+            ${isBlackout(key) && inMonth.length ? '<div class="blackout-warn">This is a blackout month &mdash; we do not normally schedule training here.</div>' : ""}
+            <div class="l-list is-flush">${inMonth.map((i) => compactRow(i)).join("") || '<div class="mc-empty">Nothing scheduled.</div>'}</div>
+          </div>
+          <div class="panel-foot"><button class="btn" data-close="1">Close</button></div>
+        </div>
+      </div>`;
   }
 
   /* Flat chronological list of everything, summaries included. */
@@ -313,26 +344,30 @@
       <div class="year-bar">
         <div class="year-total">${sorted.length} scheduled across ${esc(periodLabel())}, in date order</div>
       </div>
-      <div class="l-list">${rows}</div>` + parked(items);
+      <div class="l-list">${rows}</div>` + parked(items) + legend();
   }
 
   /* Items with no date agreed yet, listed so they are not forgotten. */
   function parked(items) {
     const list = items.filter(isParked);
     if (!list.length) return "";
-    const open = state.expanded.has("parked");
     return `
-      <div class="months" style="margin-top:14px">
-        <div class="m-row${open ? " is-open" : ""}">
-          <button class="m-head" data-month="parked" aria-expanded="${open}">
-            <span class="m-chev" aria-hidden="true"></span>
-            <span class="m-name">Parked</span>
-            <span class="m-sum">No date agreed yet</span>
-            <span class="m-count">${list.length}</span>
-          </button>
-          <div class="m-body">${list.map((i) => trainingRow(i)).join("")}</div>
-        </div>
-      </div>`;
+      <div class="section-head">
+        <span class="bar" style="background:var(--ink-40)"></span>
+        <h3>Parked</h3>
+        <span class="n">${list.length} with no date yet</span>
+      </div>
+      <div class="l-list">${list.map((i) => compactRow(i)).join("")}</div>`;
+  }
+
+  /* The dots need a key, since the cells only have room for a dot. */
+  function legend() {
+    const dots = Object.keys(DEPARTMENTS).map((k) => `
+      <span class="legend-item">
+        <span class="dot" style="background:${DEPARTMENTS[k].colour}"></span>
+        <span class="t">${esc(DEPARTMENTS[k].label)}</span>
+      </span>`).join("");
+    return `<div class="legend"><span class="legend-label">Departments</span>${dots}</div>`;
   }
 
   function emptyState() {
@@ -794,11 +829,32 @@
   }
 
   /* --- Events ------------------------------------------------------------- */
-  function closeModal() { state.modal = null; paint(null); }
+  /* Closing an item detail returns you to the month you opened it from,
+     rather than dumping you back at the grid. */
+  function closeModal() {
+    if (state.modal === "detail" && state.openMonth) {
+      const key = state.openMonth;
+      state.openMonth = null;
+      openMonthPanel(key);
+      return;
+    }
+    state.modal = null;
+    state.openMonth = null;
+    paint(null);
+  }
+
+  function openMonthPanel(key) {
+    state.openMonth = key;
+    state.modal = "month";
+    paint(renderMonthPanel(key));
+  }
 
   function openDetail(id) {
     const item = TRAINING.find((i) => i.id === id);
-    if (item) { state.modal = "detail"; paint(renderDetail(item)); }
+    if (!item) return;
+    if (state.modal !== "month") state.openMonth = null;
+    state.modal = "detail";
+    paint(renderDetail(item));
   }
 
   function openForm(kind) {
@@ -818,14 +874,8 @@
     const submit = e.target.closest("[data-submit]");
     if (submit) { submitForm(submit.dataset.submit); return; }
 
-    const mHead = e.target.closest(".m-head");
-    if (mHead) {
-      const key = mHead.dataset.month;
-      if (state.expanded.has(key)) state.expanded.delete(key);
-      else state.expanded.add(key);
-      render();
-      return;
-    }
+    const monthBtn = e.target.closest("[data-month]");
+    if (monthBtn) { openMonthPanel(monthBtn.dataset.month); return; }
 
     const tab = e.target.closest(".tab");
     if (tab) { state.view = tab.dataset.view; render(); return; }
@@ -854,13 +904,6 @@
       if (a === "reset") {
         state.area = null; state.types.clear(); state.departments.clear();
         state.thisMonth = false; state.search = "";
-        render();
-      } else if (a === "expand-all") {
-        periodMonths().forEach((m) => state.expanded.add(m));
-        state.expanded.add("parked");
-        render();
-      } else if (a === "collapse-all") {
-        state.expanded.clear();
         render();
       } else if (a === "this-month") {
         state.thisMonth = !state.thisMonth;
@@ -904,7 +947,5 @@
 
   /* --- Boot --------------------------------------------------------------- */
   snapPeriodToNow();
-  // Open the current month so the page is useful the moment it loads.
-  if (periodMonths().includes(currentMonthKey())) state.expanded.add(currentMonthKey());
   render();
 })();
