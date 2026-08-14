@@ -171,22 +171,19 @@
       if (areas.length === Object.keys(BUSINESS_AREAS).length) bits.push("All areas");
       else if (areas.length) bits.push(areas.join(", "));
     }
-    if (itemMonths(item).length > 1) bits.push("Recurring");
+    if (item.ongoing) bits.push("Ongoing");
+    else if (itemMonths(item).length > 1) bits.push("Recurring");
     return bits.filter(Boolean).join(" · ");
   }
 
-  /* Resources link — shown on everything except online modules, where the
-     module itself is the resource. */
+  /* The sheet's Resource Link column. One field for every item; eLearning
+     points at the module itself, everything else at its materials. */
   function resourceLink(item) {
-    if (item.type === "online") {
-      return item.link
-        ? `<a class="res-link" href="${esc(item.link)}" target="_blank" rel="noopener">${icon("external")}Module</a>`
-        : `<span class="res-link is-empty">&mdash;</span>`;
-    }
+    const label = item.type === "online" ? "Module" : "Resources";
     if (item.resources) {
-      return `<a class="res-link" href="${esc(item.resources)}" target="_blank" rel="noopener">${icon("external")}Resources</a>`;
+      return `<a class="res-link" href="${esc(item.resources)}" target="_blank" rel="noopener">${icon("external")}${label}</a>`;
     }
-    return `<span class="res-link is-empty">Resources to come</span>`;
+    return `<span class="res-link is-empty">${label} to come</span>`;
   }
 
   /* One row of training — used in the month panel and the Parked block. */
@@ -214,11 +211,13 @@
 
   /* Plain-language count, e.g. "3 policy resigns · 1 workshop". */
   const TYPE_NOUN = {
-    workshop: ["workshop", "workshops"],
-    online: ["online module", "online modules"],
     policy: ["policy resign", "policy resigns"],
+    online: ["eLearning module", "eLearning modules"],
+    blended: ["blended course", "blended courses"],
+    workshop: ["workshop", "workshops"],
     webinar: ["webinar", "webinars"],
-    activity: ["campaign", "campaigns"],
+    drill: ["drill", "drills"],
+    audit: ["audit", "audits"],
   };
 
   function typeSummary(items) {
@@ -472,10 +471,11 @@
   /* --- Detail modal ------------------------------------------------------- */
   function renderDetail(item) {
     const d = deptOf(item);
-    const months = itemMonths(item).map((m) => {
+    const asWords = itemMonths(item).map((m) => {
       const l = monthLabel(m);
       return l.name + " " + l.year;
-    }).join(", ");
+    });
+    const months = item.ongoing ? asWords[0] + " onwards" : asWords.join(", ");
 
     const cells = [
       ["When", months || "No date yet"],
@@ -499,16 +499,10 @@
     }
     const note = notes.map((n) => `<div class="note-draft">${n}</div>`).join("");
 
-    let action;
-    if (item.type === "online") {
-      action = item.link
-        ? `<a class="btn btn-dark btn-link" href="${esc(item.link)}" target="_blank" rel="noopener">${icon("external")}Open module</a>`
-        : `<span class="result-count" style="margin-right:auto">No module link yet</span>`;
-    } else if (item.resources) {
-      action = `<a class="btn btn-dark btn-link" href="${esc(item.resources)}" target="_blank" rel="noopener">${icon("external")}Resources</a>`;
-    } else {
-      action = `<span class="result-count" style="margin-right:auto">No resources linked yet</span>`;
-    }
+    const actionLabel = item.type === "online" ? "Open module" : "Resources";
+    const action = item.resources
+      ? `<a class="btn btn-dark btn-link" href="${esc(item.resources)}" target="_blank" rel="noopener">${icon("external")}${esc(actionLabel)}</a>`
+      : `<span class="result-count" style="margin-right:auto">No resource link yet</span>`;
 
     const ink = textOn(d.colour);
     return `

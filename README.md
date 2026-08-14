@@ -13,9 +13,9 @@ Built as a plain static site. No build step, no server, no backend, no dependenc
 - **Business area cards** — All / Stores / CCPF / Head Office. One click, whole calendar reframes.
 - **Financial year ⇄ calendar year toggle**, with a year dropdown and arrows. The counter tells you how many items fall outside the year you are looking at.
 - **One dot of colour per item**, which is the department, keyed in the legend at the foot of the page. Nothing else in the calendar is coloured, so the colour means exactly one thing.
+- **Delivery types mirror the sheet** — Policy resigns, eLearning, eLearning and Workshop, Workshop, Webinar, Drill, Audit.
 - **Blackout months** — July and December are greyed, dashed and badged, and are not clickable when empty. If something is scheduled into one anyway, the month opens and carries a warning.
 - **Parked** — anything with no date agreed sits in its own list below the grid so it is not forgotten.
-- **No status field.** Everything on the calendar is treated the same. Where a date or format is genuinely unsettled, that is said in the item's own summary rather than as a badge.
 - **This month** filter, which also jumps the calendar to the right year if you are looking at a different one.
 - **Resources link** on every item except online modules, where the module itself is the resource. Grid cells are titles only; the link is in the month panel and the detail panel.
 
@@ -34,7 +34,7 @@ A training item looks like this:
   id:         "stores-jewellery",   // unique, lowercase, no spaces
   title:      "Jewellery",          // shows on the card
   month:      "2026-11",            // YYYY-MM
-  type:       "workshop",           // workshop | online | policy | webinar | activity
+  type:       "workshop",           // policy | online | blended | workshop | webinar | drill | audit
   department: "operations",         // sets the card colour — see list below
   areas:      ["stores"],           // stores | ccpf | head-office — can be several
   audience:   "Store team members",
@@ -57,6 +57,8 @@ months: ["2026-08", "2026-09", "2026-10", "2026-11"],
 ```
 
 The item then appears in every month listed and is badged **Recurring**.
+
+**Runs from a date onwards?** Set a `month` and add `ongoing: true`. It sits in its starting month, is badged **Ongoing**, and its detail panel reads "August 2026 onwards".
 
 **No date yet?** Just leave the month off. It appears in the Parked list below the grid.
 
@@ -91,57 +93,47 @@ Change that line to move them. Blackout months are greyed, dashed, badged and re
 
 ### Resources links
 
-Every item that is not an online module has a `resources` field. Paste a SharePoint folder link, a Teams file link, or anything else — it becomes a **Resources** button on the card and in the detail panel.
+This is the sheet's **Resource Link** column. Every item has a `resources` field — paste a SharePoint folder link, a Teams file link, a CCLearn course URL, anything. It becomes a button in the month panel and the detail panel. eLearning items label it *Module*; everything else labels it *Resources*.
 
-Leave it as `""` and the row shows a quiet *Resources to come*, so you can see at a glance which sessions still need their materials attached. **None are set yet** — every row currently reads *Resources to come*.
-
-Online modules use `link` instead, pointing at the CCLearn course.
+Leave it as `""` and the item reads a quiet *Resources to come*, so you can see at a glance what still needs materials attached. **None are set yet** — the Resource Link column is empty throughout the sheet.
 
 ---
 
 ## Where the data came from
 
-Two spreadsheets, merged. Every item carries a `source` field so you can tell them apart.
+One place: the master training sheet. Its columns map straight onto the data file.
 
-| `source` | Document |
+| Sheet column | Field |
 |---|---|
-| `policy-calendar` | The policy resign calendar — titles, business areas, departments, dates and overview text taken from it directly, plus its Online Modules and Campaigns_Workshops tabs |
-| `planner` | Draft Annual Planner (Jul 26 – Jun 27) — the WHS / Stores / CCPF tabs |
-| `placeholder` | Seeded examples so the Head Office view is not empty. Flagged in the app. Replace them. |
+| Area | `areas` (which business areas it reaches) and `audience` (the sheet's own wording) |
+| Delivery | `type` |
+| Category | `department` |
+| Title | `title` |
+| When | `month` / `months` / `ongoing` |
+| Overview | `summary` |
+| Status | used only to tell the policy resigns apart |
+| Resource Link | `resources` |
 
-The 24 policy resigns run **August 2026 through May 2027** — they are aligned to the financial year, not the calendar year. Their summaries are the spreadsheet's own Overview wording.
+**Area** maps to business areas like this:
 
-All of them are delivered as **eLearning**, which shows as *Delivered via: eLearning* in the detail panel. They stay under the **Policy resigns** delivery filter rather than being folded in with Online modules, so the filter you asked for keeps working — the `format` field carries the eLearning fact separately.
+| Sheet says | Shows under |
+|---|---|
+| Whole Organisation, Office and Store Managers | Stores, CCPF and Head Office |
+| Corporate Stores, Stores | Stores |
+| Contact and Lending Centre, Collections and Hardship | CCPF |
+| Finance | Head Office |
 
-### Where the two documents disagree
+### Judgement calls worth checking
 
-Both versions are in the calendar rather than one being silently dropped. Worth a decision on each:
+- **Leadership Training is filed under Operations**, because that is what the sheet's Category column says. That leaves the **Leadership** department with no items — as do **IT** and **Marketing**, which the sheet never uses. Change `department` on that one item to `"leadership"` if it should sit there instead.
+- **Bomb Threats and Lockdown have a blank Delivery cell.** Both are set to eLearning, matching the rest of the WHS block.
+- **AI Training and Community has a blank Area cell.** It is treated as whole-organisation.
+- **Two items run from a date onwards** — AI Training and Community (Aug 26) and Leadership Training (Sep 26). They sit in their starting month badged *Ongoing*, rather than repeating across every following month, which would fill every cell in the grid. Say the word if you would rather see them in every month.
+- **Safety Month** is no longer a calendar item of its own; the sheet records it as a note against Test and Tag Training, so it is mentioned in that item's summary.
 
-| Topic | Policy Resign Calendar | Draft Annual Planner |
-|---|---|---|
-| Theft by Force | Campaign March 2026, workshop April 2026 | Online module October 2026 |
-| Violence and Aggression | Resign October 2026 (Safety Month) | Online module March 2027 |
-| Test and Tag | Refresher campaign August 2026 | Training workshop October 2026 |
+### Parked
 
-Two other things to look at:
-
-- **Bullying and Harassment** appears in both documents for August 2026. It is entered **once**, as a People & Culture policy resign.
-- The planner also has a separate **Harassment** refresher in June 2027, which overlaps with the August resign. Worth confirming whether both are needed.
-- The three October safety policies (Corporate Store Operations WHS Policy, Fires/Evacuation, Fitness for Work) sit under **Operations**, which the updated calendar's Category column confirms — earlier there was a question over whether they belonged to WHS.
-
-### What was not imported
-
-- **Intro to the Privacy Act**, which the earlier calendar had flagged to merge with the Privacy Policy. The updated calendar has only Privacy Policy, so that is all that is here.
-- Anything in the policy calendar dated **Jul–Dec 2025** — before this calendar starts.
-- The **December induction modules** (Privacy Induction, Induction: Leave Policy, WHS Induction). December is a blackout month and these read as always-on induction rather than scheduled training. Add them if you want them visible.
-- The **Survey Schedule** tab. The People & Capability view that would have used it has been removed.
-- The placeholder **New Financial Year Compliance Refresh** was dropped, because the real AML/CTF and conduct resigns now cover it.
-- Policy **owners** (Kan, Julie, Sascha and so on) are in the spreadsheet but are not displayed — owner was removed from the app.
-
-### Other things worth knowing
-
-- **WHS training is tagged to all three business areas**, because health and safety applies right across the business. That makes Stores show most of the calendar. If some modules are genuinely store-only, trim the `areas` list on those items and the filters will sharpen up.
-- Because the resigns moved to the financial year, only three items now fall outside FY26/27 — the March and April 2026 Theft by Force campaign and workshop, and Collections: Selling the Benefits in May 2026. Switch to **Calendar year 2026** to see them.
+Five policies carry no date: Social Media, Customer Marketing, Recruitment, Unconscious Bias and Leave Policy. They came from the earlier policy resign calendar and have no row in the master sheet, because that sheet is organised by month. They are kept in a Parked list below the grid rather than dropped. Delete any that are no longer wanted.
 
 ---
 
