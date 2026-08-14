@@ -13,7 +13,7 @@ Built as a plain static site. No build step, no server, no backend, no dependenc
 - **Business area cards** — All / Stores / CCPF / Head Office. One click, whole calendar reframes.
 - **Financial year ⇄ calendar year toggle**, with a year dropdown and arrows. The counter tells you how many items fall outside the year you are looking at.
 - **One dot of colour per item**, which is the department, keyed in the legend at the foot of the page. Nothing else in the calendar is coloured, so the colour means exactly one thing.
-- **Delivery types mirror the sheet** — Policy resigns, eLearning, eLearning and Workshop, Workshop, Webinar, Drill, Audit.
+- **Delivery types mirror the sheet** — Policy resigns, eLearning, eLearning and Workshop, Workshop, Webinar, Event, Drill, Audit.
 - **Blackout months** — July and December are greyed, dashed and badged, and are not clickable when empty. If something is scheduled into one anyway, the month opens and carries a warning.
 - **Parked** — anything with no date agreed sits in its own list below the grid so it is not forgotten.
 - **This month** filter, which also jumps the calendar to the right year if you are looking at a different one.
@@ -34,7 +34,7 @@ A training item looks like this:
   id:         "stores-jewellery",   // unique, lowercase, no spaces
   title:      "Jewellery",          // shows on the card
   month:      "2026-11",            // YYYY-MM
-  type:       "workshop",           // policy | online | blended | workshop | webinar | drill | audit
+  type:       "workshop",           // policy | online | blended | workshop | webinar | event | drill | audit
   department: "operations",         // sets the card colour — see list below
   areas:      ["stores"],           // stores | ccpf | head-office — can be several
   audience:   "Store team members",
@@ -123,12 +123,36 @@ One place: the master training sheet. Its columns map straight onto the data fil
 | Contact and Lending Centre, Collections and Hardship | CCPF |
 | Finance | Head Office |
 
-### Judgement calls worth checking
+### The leadership programme
 
-- **Leadership Training is filed under Operations**, because that is what the sheet's Category column says. That leaves the **Leadership** department with no items — as do **IT** and **Marketing**, which the sheet never uses. Change `department` on that one item to `"leadership"` if it should sit there instead.
-- **Bomb Threats and Lockdown have a blank Delivery cell.** Both are set to eLearning, matching the rest of the WHS block.
-- **AI Training and Community has a blank Area cell.** It is treated as whole-organisation.
-- **Two items run from a date onwards** — AI Training and Community (Aug 26) and Leadership Training (Sep 26). They sit in their starting month badged *Ongoing*, rather than repeating across every following month, which would fill every cell in the grid. Say the word if you would rather see them in every month.
+The **Rotating Competency Focus** — one competency a month, owned by **People & Culture**, **Stores only** to start. Add `"ccpf"` and `"head-office"` to those items' `areas` when it widens out.
+
+The cycle runs September through to the following August, so within FY26/27:
+
+| | | | |
+|---|---|---|---|
+| Sep 26 · Potential | Oct 26 · Risk, Safety & Protection | Nov 26 · Community | Dec 26 · — |
+| Jan 27 · Performance | Feb 27 · Perseverance | Mar 27 · Systems and Execution | Apr 27 · Responsibility |
+| May 27 · People | Jun 27 · Equity | Jul 27 · — | Aug 27 · Customer Trust |
+
+December and July carry no competency, which lines up exactly with the blackout months.
+
+**Customer Trust lands in August 2027**, the last month of the Sep-to-Aug cycle, so it falls just outside FY26/27 — the counter says *1 outside FY26/27* and it appears when you step the year forward. Change its `month` to `2026-08` if the rotation should sit wholly inside this financial year.
+
+A **Leadership Summit** sits alongside it: a one-day Event in October 2026 for the whole business, so unlike the monthly competencies it shows under all three business areas.
+
+### AI
+
+Split in two, both under the **IT** department:
+
+- **AI Training** — eLearning, August and September 2026
+- **AI Community Workshops** — Workshop, November 2026
+
+### Other judgement calls worth checking
+
+- **Bomb Threats and Lockdown have a blank Delivery cell** in the sheet. Both are set to eLearning, matching the rest of the WHS block.
+- **AI Training has a blank Area cell.** It is treated as whole-organisation.
+- **The Leadership department has no items**, since the leadership programme sits under People & Culture. It is kept in the list in case you want it later; the chip just reads zero. **Marketing** only holds the two parked policies.
 - **Safety Month** is no longer a calendar item of its own; the sheet records it as a note against Test and Tag Training, so it is mentioned in that item's summary.
 
 ### Parked

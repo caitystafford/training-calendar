@@ -216,6 +216,7 @@
     blended: ["blended course", "blended courses"],
     workshop: ["workshop", "workshops"],
     webinar: ["webinar", "webinars"],
+    event: ["event", "events"],
     drill: ["drill", "drills"],
     audit: ["audit", "audits"],
   };
