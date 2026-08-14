@@ -218,7 +218,6 @@
     webinar: ["webinar", "webinars"],
     event: ["event", "events"],
     drill: ["drill", "drills"],
-    audit: ["audit", "audits"],
   };
 
   function typeSummary(items) {

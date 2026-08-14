@@ -42,7 +42,7 @@
    -----------------------------------------------------------------------------
    THE FIXED LISTS — use these exact values
    -----------------------------------------------------------------------------
-   TYPES           policy | online | blended | workshop | webinar | drill | audit
+   TYPES           policy | online | blended | workshop | webinar | event | drill
                    (these mirror the Delivery column of the master sheet)
    BUSINESS AREAS  stores | ccpf | head-office        (the `areas` field)
    DEPARTMENTS     people-culture | it | marketing | operations |
@@ -169,7 +169,6 @@ const TYPES = {
   webinar:  { label: "Webinar",                short: "Webinar" },
   event:    { label: "Event",                  short: "Event" },
   drill:    { label: "Drill",                  short: "Drill" },
-  audit:    { label: "Audit",                  short: "Audit" },
 };
 
 /* -----------------------------------------------------------------------------
@@ -694,17 +693,6 @@ const TRAINING = [
     resources: "",
   },
   {
-    id: "whs-sign-off-audit",
-    title: "Sign Off Audit",
-    month: "2026-10",
-    type: "audit",
-    department: "whs",
-    areas: ["stores"],
-    audience: "Corporate Stores",
-    summary: "Confirms that required operational, safety and compliance checks have been completed and documented.",
-    resources: "",
-  },
-  {
     id: "whs-bomb-threats",
     title: "Bomb Threats",
     month: "2026-11",
@@ -747,7 +735,7 @@ const TRAINING = [
     id: "ops-jewellery",
     title: "Jewellery",
     month: "2026-11",
-    type: "online",
+    type: "workshop",
     department: "operations",
     areas: ["stores"],
     audience: "Corporate Stores",
@@ -758,7 +746,7 @@ const TRAINING = [
     id: "ops-retail",
     title: "Retail",
     month: "2026-11",
-    type: "online",
+    type: "workshop",
     department: "operations",
     areas: ["stores"],
     audience: "Corporate Stores",

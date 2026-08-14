@@ -13,7 +13,7 @@ Built as a plain static site. No build step, no server, no backend, no dependenc
 - **Business area cards** — All / Stores / CCPF / Head Office. One click, whole calendar reframes.
 - **Financial year ⇄ calendar year toggle**, with a year dropdown and arrows. The counter tells you how many items fall outside the year you are looking at.
 - **One dot of colour per item**, which is the department, keyed in the legend at the foot of the page. Nothing else in the calendar is coloured, so the colour means exactly one thing.
-- **Delivery types mirror the sheet** — Policy resigns, eLearning, eLearning and Workshop, Workshop, Webinar, Event, Drill, Audit.
+- **Delivery types mirror the sheet** — Policy resigns, eLearning, eLearning and Workshop, Workshop, Webinar, Event, Drill.
 - **Blackout months** — July and December are greyed, dashed and badged, and are not clickable when empty. If something is scheduled into one anyway, the month opens and carries a warning.
 - **Parked** — anything with no date agreed sits in its own list below the grid so it is not forgotten.
 - **This month** filter, which also jumps the calendar to the right year if you are looking at a different one.
@@ -34,7 +34,7 @@ A training item looks like this:
   id:         "stores-jewellery",   // unique, lowercase, no spaces
   title:      "Jewellery",          // shows on the card
   month:      "2026-11",            // YYYY-MM
-  type:       "workshop",           // policy | online | blended | workshop | webinar | event | drill | audit
+  type:       "workshop",           // policy | online | blended | workshop | webinar | event | drill
   department: "operations",         // sets the card colour — see list below
   areas:      ["stores"],           // stores | ccpf | head-office — can be several
   audience:   "Store team members",
