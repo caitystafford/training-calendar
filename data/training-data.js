@@ -732,6 +732,17 @@ const TRAINING = [
      PRODUCT AND OPERATIONS
      ====================================================================== */
   {
+    id: "ops-rewards-app-overview",
+    title: "Cashies Rewards App Overview",
+    month: "2026-09",
+    type: "online",
+    department: "operations",
+    areas: ["stores"],
+    audience: "Corporate Stores",
+    summary: "Introduces the Cashies Rewards app and how store teams use it day to day.",
+    resources: "",
+  },
+  {
     id: "ops-jewellery",
     title: "Jewellery",
     month: "2026-11",
